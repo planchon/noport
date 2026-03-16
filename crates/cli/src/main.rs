@@ -1,5 +1,3 @@
-use std::thread::Builder;
-
 use clap::Parser;
 use clap::Subcommand;
 
@@ -43,7 +41,7 @@ fn main() {
                     Colour::Fixed(29).paint("Starting proxy server"),
                     Colour::Fixed(31).paint("(:2828)")
                 );
-                let result = runtime.block_on(daemon::start_proxy(None));
+                let result = runtime.block_on(daemon::start_deamon(None));
 
                 if let Err(e) = result {
                     println!("{}", Colour::Red.paint(e.to_string()));
