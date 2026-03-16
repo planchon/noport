@@ -1,0 +1,7 @@
+[workspace]
+members = ["crates/*"]
+
+[workspace.package]
+name = "noport"
+version = "0.1.0"
+edition = "2024"
