@@ -1,8 +1,12 @@
+use std::thread::Builder;
+
 use clap::Parser;
 use clap::Subcommand;
 
 use ansi_term::Colour;
+use tokio::runtime::Runtime;
 
+mod setup;
 mod subprocess;
 
 #[derive(Parser)]
@@ -11,16 +15,16 @@ struct NoPort {
     #[command(subcommand)]
     command: Option<NoPortCommand>,
 
-    // everything after -- is treated as "child process" arguments
+    /// Child process arguments (your command)
     #[arg(last = true)]
     child_args: Vec<String>,
 }
 
 #[derive(Subcommand, Debug)]
 enum NoPortCommand {
-    // setup the HTTPS certificate and key
+    /// Setup HTTPS certificate and key
     Setup,
-    // start the proxy server
+    /// Start the proxy server
     Start,
 }
 
@@ -30,21 +34,32 @@ fn main() {
     if let Some(command) = cli.command {
         match command {
             NoPortCommand::Setup => {
-                println!("Setup command");
+                setup::setup();
             }
             NoPortCommand::Start => {
-                println!("Start command");
+                let runtime = Runtime::new().unwrap();
+                println!(
+                    "\n{} {}\n",
+                    Colour::Fixed(29).paint("Starting proxy server"),
+                    Colour::Fixed(31).paint("(:2828)")
+                );
+                let result = runtime.block_on(daemon::start_proxy(None));
+
+                if let Err(e) = result {
+                    println!("{}", Colour::Red.paint(e.to_string()));
+                }
+
+                println!("{}", Colour::Fixed(50).paint("Proxy server started"));
             }
         }
     }
 
     // run the child process
     if !cli.child_args.is_empty() {
-        let main_command = cli.child_args[0].clone();
         println!(
-            "\n\n{} {}\n",
-            Colour::Green.paint("Starting child process"),
-            Colour::Yellow.paint(main_command),
+            "\n{}\n\n{}\n",
+            Colour::Fixed(29).paint("Starting child process"),
+            Colour::Fixed(242).paint(cli.child_args.join(" "))
         );
 
         subprocess::start(cli.child_args);
