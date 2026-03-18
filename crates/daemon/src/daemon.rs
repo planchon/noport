@@ -6,9 +6,7 @@ use noport_lib::store::Store;
 
 use crate::server;
 
-pub async fn start_deamon(addr: Option<String>) -> io::Result<()> {
-    let store = Store::new();
-
+pub async fn start_deamon(store: Store, addr: Option<String>) -> io::Result<()> {
     let addr = addr.unwrap_or_else(|| "127.0.0.1:2828".to_string());
 
     let server = TcpListener::bind(&addr).await?;

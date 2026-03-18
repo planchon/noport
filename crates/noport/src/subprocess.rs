@@ -6,6 +6,7 @@ pub fn start(args: Vec<String>) -> Option<ExitStatus> {
         return None;
     }
 
+    // start the subprocess
     let main_command = args[0].clone();
     let main_args = args[1..].to_vec();
 

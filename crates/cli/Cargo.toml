@@ -9,3 +9,4 @@ noport-lib = { path = "../noport" }
 ansi_term = "0.12"
 clap = { workspace = true }
 tokio = { workspace = true }
+anyhow.workspace = true

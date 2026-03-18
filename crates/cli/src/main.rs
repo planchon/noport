@@ -2,12 +2,17 @@ use clap::Parser;
 use clap::Subcommand;
 
 use ansi_term::Colour;
-use tokio::runtime::Runtime;
+use noport_lib::store::Store;
 
 use noport_lib::setup::setup_certificate;
 use noport_lib::subprocess::start;
 
+use crate::start::start_background;
+use crate::start::start_foreground;
+
 mod setup;
+mod start;
+mod stop;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -41,42 +46,38 @@ enum NoPortCommand {
     /// Setup HTTPS certificate and key
     Setup,
     /// Start the proxy server
-    Start,
+    Start {
+        /// Run the daemon in the foreground
+        #[arg(short, long, default_value_t = false)]
+        foreground: bool,
+    },
+    Stop,
 }
 
-fn main() {
+fn main() -> Result<(), anyhow::Error> {
     let cli = NoPort::parse();
-
-    let use_git_branch = cli.git_branch;
-    let use_git_worktree = cli.git_worktree;
-
-    let override_domain = cli.domain;
-    let override_app_port = cli.app_port;
+    let store = Store::new();
 
     if let Some(command) = cli.command {
         match command {
             NoPortCommand::Setup => {
                 setup_certificate();
             }
-            NoPortCommand::Start => {
-                let runtime = Runtime::new().unwrap();
-                println!(
-                    "\n{} {}\n",
-                    Colour::Fixed(29).paint("Starting the daemon proxy server"),
-                    Colour::Fixed(31).paint("(:2828)")
-                );
-                let result = runtime.block_on(daemon::daemon::start_deamon(None));
-
-                if let Err(e) = result {
-                    println!("{}", Colour::Red.paint(e.to_string()));
+            NoPortCommand::Stop => {
+                return stop::stop_daemon(store);
+            }
+            // start the daemon proxy server
+            NoPortCommand::Start { foreground } => {
+                if foreground {
+                    return start_foreground(store);
+                } else {
+                    return start_background(store);
                 }
-
-                println!("{}", Colour::Fixed(50).paint("Proxy server started"));
             }
         }
     }
 
-    // run the child process
+    // // run the child process
     if !cli.child_args.is_empty() {
         println!(
             "\n{}\n\n{}\n",
@@ -86,4 +87,6 @@ fn main() {
 
         start(cli.child_args);
     }
+
+    Ok(())
 }
