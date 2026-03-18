@@ -62,7 +62,7 @@ fn main() {
                 let runtime = Runtime::new().unwrap();
                 println!(
                     "\n{} {}\n",
-                    Colour::Fixed(29).paint("Starting proxy server"),
+                    Colour::Fixed(29).paint("Starting the daemon proxy server"),
                     Colour::Fixed(31).paint("(:2828)")
                 );
                 let result = runtime.block_on(daemon::daemon::start_deamon(None));
