@@ -12,10 +12,17 @@ use crate::start::start_foreground;
 
 mod setup;
 mod start;
+mod status;
 mod stop;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(
+    author = "Paul Planchon",
+    version = "0.1.0",
+    name = "noport",
+    about = "Remove all port from your dev workflow",
+    arg_required_else_help = true
+)]
 struct NoPort {
     #[command(subcommand)]
     command: Option<NoPortCommand>,
@@ -52,6 +59,7 @@ enum NoPortCommand {
         foreground: bool,
     },
     Stop,
+    Status,
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -66,6 +74,9 @@ fn main() -> Result<(), anyhow::Error> {
             NoPortCommand::Stop => {
                 return stop::stop_daemon(store);
             }
+            NoPortCommand::Status => {
+                return status::status(store);
+            }
             // start the daemon proxy server
             NoPortCommand::Start { foreground } => {
                 if foreground {
@@ -77,7 +88,6 @@ fn main() -> Result<(), anyhow::Error> {
         }
     }
 
-    // // run the child process
     if !cli.child_args.is_empty() {
         println!(
             "\n{}\n\n{}\n",

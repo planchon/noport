@@ -1,24 +1,40 @@
 use std::io;
 
+use hyper::{server::conn::http1, service::service_fn};
+use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
 use noport_lib::store::Store;
 
-use crate::server;
+use crate::server::{self, handle_request};
+
+type ServerBuilder = hyper::server::conn::http1::Builder;
+
+const DEFAULT_ADDR: &str = "127.0.0.1:2828";
 
 pub async fn start_deamon(store: Store, addr: Option<String>) -> io::Result<()> {
-    let addr = addr.unwrap_or_else(|| "127.0.0.1:2828".to_string());
+    let addr = addr.unwrap_or_else(|| DEFAULT_ADDR.to_string());
 
-    let server = TcpListener::bind(&addr).await?;
+    let listener = TcpListener::bind(&addr).await?;
 
     loop {
-        let (stream, _) = server.accept().await?;
+        let (stream, _) = listener.accept().await?;
+
+        let io = TokioIo::new(stream);
 
         let store_clone = store.clone();
 
         tokio::spawn(async move {
-            let res = server::handle_request(stream, store_clone).await;
-            if let Err(e) = res {
+            if let Err(e) = ServerBuilder::new()
+                .preserve_header_case(true)
+                .title_case_headers(true)
+                .serve_connection(
+                    io,
+                    service_fn(|req| handle_request(req, store_clone.clone())),
+                )
+                .with_upgrades()
+                .await
+            {
                 println!("Error while handling request: {}", e);
             }
         });

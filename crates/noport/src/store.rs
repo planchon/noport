@@ -1,7 +1,7 @@
+use std::env;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use std::{collections::HashMap, env};
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
@@ -10,11 +10,13 @@ use tokio::sync::Mutex;
 pub struct StoreEntry {
     pub port: u16,
     pub domain: String,
+    pub path: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct Store {
-    inner: Arc<Mutex<HashMap<String, StoreEntry>>>,
+    inner: Arc<Mutex<Vec<StoreEntry>>>,
+
     root_folder: String,
 }
 
@@ -24,13 +26,40 @@ impl Store {
         let home_folder = home_dir.join(".noport").to_string_lossy().to_string();
 
         Self {
-            inner: Arc::new(Mutex::new(HashMap::new())),
+            inner: Arc::new(Mutex::new(Vec::new())),
             root_folder: home_folder,
         }
     }
 
     pub fn get_root_folder(&self) -> String {
         self.root_folder.clone()
+    }
+
+    pub async fn add_proxy_entry(
+        &self,
+        path: String,
+        domain: String,
+        port: u16,
+    ) -> Result<(), anyhow::Error> {
+        let mut store = self.inner.lock().await;
+
+        // verify the domain is not already in use
+        if store.iter().any(|e| e.domain == domain) {
+            return Err(anyhow::anyhow!("domain already in use"));
+        }
+
+        let entry = StoreEntry { port, domain, path };
+
+        store.push(entry.clone());
+
+        Ok(())
+    }
+
+    /// Return the possible StoreEntry for a given domain, if any
+    /// Example: api.localhost -> StoreEntry { port: , domain: "api.localhost", path: "" }
+    pub async fn reverse_proxy(&self, host: String) -> Option<StoreEntry> {
+        let store = self.inner.lock().await;
+        store.iter().find(|e| e.domain == host).cloned()
     }
 
     /// When we start the daemon we set its process id
@@ -52,59 +81,5 @@ impl Store {
         let content = fs::read_to_string(path)?;
         let process_id: u32 = content.parse()?;
         Ok(process_id)
-    }
-
-    fn read_entry_from_disk(&self, key: String) -> Option<StoreEntry> {
-        let path = Path::new(&self.root_folder).join(key);
-        if path.exists() {
-            let content = fs::read_to_string(path).unwrap();
-            let entry: StoreEntry = serde_json::from_str(&content).unwrap();
-            return Some(entry);
-        }
-        None
-    }
-
-    fn write_entry_to_disk(&self, key: String, entry: StoreEntry) -> Result<(), anyhow::Error> {
-        let path = Path::new(&self.root_folder).join(key);
-        fs::write(path, serde_json::to_string(&entry).unwrap()).unwrap();
-        Ok(())
-    }
-
-    pub async fn add_domain(
-        &self,
-        path: String,
-        domain: String,
-        port: u16,
-    ) -> Result<(), anyhow::Error> {
-        let mut store = self.inner.lock().await;
-
-        let key = format!("{}-{}-{}", path, domain, port);
-        let entry = StoreEntry { port, domain };
-
-        store.insert(key.clone(), entry.clone());
-
-        self.write_entry_to_disk(key, entry)?;
-
-        Ok(())
-    }
-
-    pub async fn get_domain(&self, path: String, domain: String, port: u16) -> Option<StoreEntry> {
-        let store = self.inner.lock().await;
-        let key = format!("{}-{}-{}", path, domain, port);
-
-        // check in memory first
-        let entry = store.get(&key);
-
-        if let Some(entry) = entry {
-            return Some(entry.clone());
-        }
-
-        // check on the disk
-        let entry = self.read_entry_from_disk(key);
-        if let Some(entry) = entry {
-            return Some(entry);
-        }
-
-        None
     }
 }

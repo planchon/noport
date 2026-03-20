@@ -1,4 +1,3 @@
-use core::error;
 use std::{
     env,
     fs::{self, File},
@@ -14,10 +13,11 @@ use tokio::runtime::Runtime;
 pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
     let runtime = Runtime::new().unwrap();
     println!(
-        "\n{} {}\n",
+        "{} {}\n",
         Colour::Fixed(29).paint("Starting the daemon proxy server"),
         Colour::Fixed(31).paint("(:2828)")
     );
+
     let result = runtime.block_on(daemon::daemon::start_deamon(store, None));
 
     if let Err(e) = result {
@@ -30,11 +30,24 @@ pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
 }
 
 /// Start the daemon in the background
-/// Stores the process id in the store
+/// Will not launch another daemon if one is already running
+/// Stores the process id in the store (in ~/.noport/daemon.pid)
 pub fn start_background(store: Store) -> Result<(), anyhow::Error> {
-    let exe_path = env::current_exe()?;
+    if let Ok(process_id) = store.get_daemon_process_id() {
+        println!(
+            "{}\n{} {}",
+            Colour::Fixed(29).paint("Daemon is already running"),
+            Colour::Fixed(244)
+                .italic()
+                .paint("Process already running on PID:"),
+            Colour::Fixed(31)
+                .italic()
+                .paint(process_id.clone().to_string())
+        );
+        return Ok(());
+    }
 
-    println!("test");
+    let exe_path = env::current_exe()?;
 
     // print the stdout and stderr to a file
     let root_folder = store.get_root_folder();
@@ -59,6 +72,13 @@ pub fn start_background(store: Store) -> Result<(), anyhow::Error> {
 
     let pid = child.id();
     store.set_daemon_process_id(pid)?;
+
+    println!(
+        "{}\nRunning on {} (PID: {})",
+        Colour::Fixed(29).paint("Starting the daemon proxy server"),
+        Colour::Fixed(31).paint(":2828"),
+        Colour::Fixed(31).paint(pid.to_string()),
+    );
 
     Ok(())
 }
