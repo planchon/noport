@@ -95,7 +95,7 @@ fn main() -> Result<(), anyhow::Error> {
             Colour::Fixed(242).paint(cli.child_args.join(" "))
         );
 
-        start(cli.child_args);
+        start(cli.child_args, store);
     }
 
     Ok(())

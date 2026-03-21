@@ -8,7 +8,7 @@ use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreEntry {
-    pub port: u16,
+    pub port: i32,
     pub domain: String,
     pub path: String,
 }
@@ -39,7 +39,7 @@ impl Store {
         &self,
         path: String,
         domain: String,
-        port: u16,
+        port: i32,
     ) -> Result<(), anyhow::Error> {
         let mut store = self.inner.lock().await;
 

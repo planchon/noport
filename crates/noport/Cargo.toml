@@ -11,3 +11,5 @@ serde_json = { workspace = true }
 serde = { workspace = true }
 tempdir = "0.3.7"
 uuid = { version = "1.22.0", features = ["v4"] }
+rand = "0.10.0"
+ansi_term = "0.12"

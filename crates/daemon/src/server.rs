@@ -59,7 +59,9 @@ pub async fn handle_request(
 
     let port = store_entry.unwrap().port;
 
-    let stream = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+    let stream = TcpStream::connect(("127.0.0.1", port as u16))
+        .await
+        .unwrap();
     let io = TokioIo::new(stream);
 
     let (mut sender, conn) = ClientBuilder::new()
