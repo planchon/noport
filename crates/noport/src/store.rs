@@ -78,13 +78,21 @@ impl Store {
     /// Return the possible StoreEntry for a given domain, if any
     /// Example: api.localhost -> StoreEntry { port: , domain: "api.localhost", path: "" }
     pub async fn reverse_proxy(&self, host: String) -> Option<StoreEntry> {
+        let is_dev = env::var("DEV").is_ok();
         let mut store = self.inner.lock().await;
         let sub_domain = host.replace(".localhost", "");
 
-        println!("finding store entry for {}", sub_domain.clone());
+        println!(
+            "finding store entry for {} (dev {})",
+            sub_domain.clone(),
+            is_dev.clone()
+        );
 
-        if let Some(entry) = store.iter().find(|e| e.domain == sub_domain) {
-            return Some(entry.clone());
+        // in dev we also look for the file disk
+        if !is_dev {
+            if let Some(entry) = store.iter().find(|e| e.domain == sub_domain) {
+                return Some(entry.clone());
+            }
         }
 
         let host_file = format!("{}/{}", self.host_folder, sub_domain);
