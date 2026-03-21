@@ -6,6 +6,7 @@ use noport_lib::store::Store;
 
 use noport_lib::setup::setup_certificate;
 use noport_lib::subprocess::start;
+use tokio::runtime::Runtime;
 
 use crate::start::start_background;
 use crate::start::start_foreground;
@@ -95,7 +96,9 @@ fn main() -> Result<(), anyhow::Error> {
             Colour::Fixed(242).paint(cli.child_args.join(" "))
         );
 
-        start(cli.child_args, store);
+        let runtime = Runtime::new().unwrap();
+
+        runtime.block_on(start(cli.child_args, store));
     }
 
     Ok(())

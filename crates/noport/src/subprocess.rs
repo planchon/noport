@@ -1,5 +1,6 @@
 use std::{
     env,
+    fmt::format,
     process::{Command, ExitStatus, Stdio},
 };
 
@@ -17,7 +18,7 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
 
     // register the new element to the store
     if let Err(e) = store
-        .add_proxy_entry(current_dir.clone(), domain, port)
+        .add_proxy_entry(current_dir.clone(), domain.clone(), port)
         .await
     {
         println!("Error while registering the process {:?}", e);
@@ -26,7 +27,18 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
 
     // start the subprocess
     let main_command = args[0].clone();
-    let main_args = args[1..].to_vec();
+    let mut main_args = args[1..].to_vec();
+
+    let port_args = format!("--port={}", port.clone().to_string());
+    let host_args = format!("--host=127.0.0.1");
+
+    main_args.push(port_args);
+    main_args.push(host_args);
+
+    println!(
+        "Running: {} on domain={} port={}",
+        main_command, domain, port
+    );
 
     let status = Command::new(main_command.clone())
         .args(main_args)
@@ -37,8 +49,6 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
         .stderr(Stdio::inherit())
         .status()
         .expect("Failed to start subprocess");
-
-    println!("Running: {} on port={}", main_command, port);
 
     Some(status)
 }

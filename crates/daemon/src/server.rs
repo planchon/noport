@@ -34,8 +34,6 @@ pub async fn handle_request(
     req: hyper::Request<hyper::body::Incoming>,
     store: Store,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>, anyhow::Error> {
-    println!("Handling request {:?}", req);
-
     let host = extract_host(&req);
 
     if host.is_none() {
@@ -58,6 +56,8 @@ pub async fn handle_request(
     }
 
     let port = store_entry.unwrap().port;
+
+    println!("trying to connect to {}", port);
 
     let stream = TcpStream::connect(("127.0.0.1", port as u16))
         .await
