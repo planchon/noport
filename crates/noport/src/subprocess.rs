@@ -1,6 +1,5 @@
 use std::{
     env,
-    fmt::format,
     process::{Command, ExitStatus, Stdio},
 };
 
@@ -29,11 +28,13 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
     let main_command = args[0].clone();
     let mut main_args = args[1..].to_vec();
 
-    let port_args = format!("--port={}", port.clone().to_string());
-    let host_args = format!("--host=127.0.0.1");
+    // let port_args = format!("--port={}", port.clone().to_string());
+    // let host_args = format!("--host=127.0.0.1");
 
-    main_args.push(port_args);
-    main_args.push(host_args);
+    main_args.push(port.to_string());
+
+    // main_args.push(port_args);
+    // main_args.push(host_args);
 
     println!(
         "Running: {} on domain={} port={}",
