@@ -1,12 +1,12 @@
 use std::io;
 
-use hyper::{server::conn::http1, service::service_fn};
+use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
 use noport_lib::store::Store;
 
-use crate::server::{self, handle_request};
+use crate::server::handle_request;
 
 type ServerBuilder = hyper::server::conn::http1::Builder;
 
