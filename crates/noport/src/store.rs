@@ -82,11 +82,11 @@ impl Store {
         let mut store = self.inner.lock().await;
         let sub_domain = host.replace(".localhost", "");
 
-        println!(
-            "finding store entry for {} (dev {})",
-            sub_domain.clone(),
-            is_dev.clone()
-        );
+        // println!(
+        //     "finding store entry for {} (dev {})",
+        //     sub_domain.clone(),
+        //     is_dev.clone()
+        // );
 
         // in dev we also look for the file disk
         if !is_dev {
