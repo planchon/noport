@@ -5,26 +5,23 @@ use std::{
     process::Command,
 };
 
-use ansi_term::Colour;
 use noport_lib::store::Store;
+use paris::{error, info, warn};
 use tokio::runtime::Runtime;
 
 /// Start the daemon in the foreground
 pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
     let runtime = Runtime::new().unwrap();
-    println!(
-        "{} {}\n",
-        Colour::Fixed(29).paint("Starting the daemon proxy server"),
-        Colour::Fixed(31).paint("(:2828)")
-    );
+    info!("Starting the daemon proxy server (port={})", ":2828");
 
     let result = runtime.block_on(daemon::daemon::start_deamon(store, None));
 
     if let Err(e) = result {
-        println!("{}", Colour::Red.paint(e.to_string()));
+        error!("Error starting the daemon: {}", e);
+        return Ok(());
     }
 
-    println!("{}", Colour::Fixed(50).paint("Proxy server started"));
+    info!("Proxy started.");
 
     Ok(())
 }
@@ -34,16 +31,8 @@ pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
 /// Stores the process id in the store (in ~/.noport/daemon.pid)
 pub fn start_background(store: Store) -> Result<(), anyhow::Error> {
     if let Ok(process_id) = store.get_daemon_process_id() {
-        println!(
-            "{}\n{} {}",
-            Colour::Fixed(29).paint("Daemon is already running"),
-            Colour::Fixed(244)
-                .italic()
-                .paint("Process already running on PID:"),
-            Colour::Fixed(31)
-                .italic()
-                .paint(process_id.clone().to_string())
-        );
+        warn!("Daemon is already running");
+        warn!("Running on PID: <i>{}</i>", process_id.clone().to_string());
         return Ok(());
     }
 
@@ -73,12 +62,7 @@ pub fn start_background(store: Store) -> Result<(), anyhow::Error> {
     let pid = child.id();
     store.set_daemon_process_id(pid)?;
 
-    println!(
-        "{}\nRunning on {} (PID: {})",
-        Colour::Fixed(29).paint("Starting the daemon proxy server"),
-        Colour::Fixed(31).paint(":2828"),
-        Colour::Fixed(31).paint(pid.to_string()),
-    );
+    info!("Daemon running on {} (PID: {})", ":2828", pid.to_string());
 
     Ok(())
 }

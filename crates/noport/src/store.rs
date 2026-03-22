@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+use paris::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -29,7 +30,7 @@ impl Store {
         let host_folder = home_dir.join(".noport/hosts").to_string_lossy().to_string();
 
         if !fs::exists(host_folder.clone()).unwrap() {
-            println!("Creating the hosts folder ({})", host_folder.clone());
+            info!("Creating the hosts folder ({})", host_folder.clone());
             fs::create_dir(host_folder.clone()).unwrap();
         }
 

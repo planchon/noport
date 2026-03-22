@@ -1,3 +1,5 @@
+use paris::info;
+
 pub fn setup_certificate() {
-    println!("Setting up certificate");
+    info!("Setting up the certificates");
 }

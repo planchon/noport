@@ -1,11 +1,11 @@
 use clap::Parser;
 use clap::Subcommand;
 
-use ansi_term::Colour;
 use noport_lib::store::Store;
 
 use noport_lib::setup::setup_certificate;
 use noport_lib::subprocess::start;
+use paris::info;
 use tokio::runtime::Runtime;
 
 use crate::start::start_background;
@@ -90,11 +90,7 @@ fn main() -> Result<(), anyhow::Error> {
     }
 
     if !cli.child_args.is_empty() {
-        println!(
-            "\n{}\n\n{}\n",
-            Colour::Fixed(29).paint("Starting child process"),
-            Colour::Fixed(242).paint(cli.child_args.join(" "))
-        );
+        info!("Starting the child process ({})", cli.child_args.join(" "));
 
         let runtime = Runtime::new().unwrap();
 

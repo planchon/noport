@@ -1,3 +1,5 @@
+use paris::info;
+
 pub fn setup() {
-    println!("Setup command");
+    info!("Setuping all the right certificates (for local HTTPS)");
 }

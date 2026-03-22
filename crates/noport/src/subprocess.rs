@@ -1,3 +1,4 @@
+use paris::{error, info};
 use std::{
     env,
     process::{Command, ExitStatus, Stdio},
@@ -20,7 +21,7 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
         .add_proxy_entry(current_dir.clone(), domain.clone(), port)
         .await
     {
-        println!("Error while registering the process {:?}", e);
+        error!("Error while registering the process {}", e);
         return None;
     }
 
@@ -36,7 +37,7 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
     main_args.push(port_args);
     main_args.push(host_args);
 
-    println!(
+    info!(
         "Running: {} on domain={} port={}",
         main_command, domain, port
     );

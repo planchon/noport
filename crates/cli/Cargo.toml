@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 daemon = { path = "../daemon" }
 noport-lib = { path = "../noport" }
-ansi_term = "0.12"
 clap = { workspace = true }
 tokio = { workspace = true }
 anyhow.workspace = true
+paris.workspace = true

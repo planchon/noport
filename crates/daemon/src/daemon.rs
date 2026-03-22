@@ -2,6 +2,7 @@ use std::io;
 
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
+use paris::error;
 use tokio::net::TcpListener;
 
 use noport_lib::store::Store;
@@ -35,7 +36,7 @@ pub async fn start_deamon(store: Store, addr: Option<String>) -> io::Result<()> 
                 .with_upgrades()
                 .await
             {
-                println!("Error while handling request: {}", e);
+                error!("Error while handling the request: {}", e);
             }
         });
     }

@@ -3,9 +3,9 @@ use std::io;
 use http_body_util::{BodyExt, Empty, Full, combinators::BoxBody};
 use hyper::{Method, Response, StatusCode, Uri, body::Bytes, upgrade::Upgraded};
 
-use ansi_term::Colour;
 use hyper_util::rt::TokioIo;
 use noport_lib::store::Store;
+use paris::{error, info, warn};
 use tokio::net::TcpStream;
 
 type ClientBuilder = hyper::client::conn::http1::Builder;
@@ -55,8 +55,8 @@ async fn tunnel(upgraded: Upgraded, addr: String) -> io::Result<()> {
     let (from_client, from_server) =
         tokio::io::copy_bidirectional(&mut upgraded, &mut server).await?;
 
-    println!(
-        "client wrote {}b and received {}b",
+    info!(
+        "Client wrote {} bytes and received {} bytes",
         from_client, from_server
     );
 
@@ -70,7 +70,8 @@ pub async fn handle_request(
     let host = extract_host(&req);
 
     if host.is_none() {
-        println!("{}", Colour::Red.paint("cannot find the host name"));
+        error!("Cannot find the host name");
+
         // THIS IS WRONG. we shoudl return an http error.
         return Err(anyhow::anyhow!("cannot find the host"));
     }
@@ -79,10 +80,8 @@ pub async fn handle_request(
     let store_entry = store.reverse_proxy(host_value.clone()).await;
 
     if store_entry.is_none() {
-        println!(
-            "{} {}",
-            Colour::Red.paint("cannot find the store entry for host"),
-            Colour::Fixed(27).paint(host_value)
+        error!(
+            "Cannot find the store entry for the host (have you launched noport before the command?)"
         );
         // THIS IS WRONG. we shoudl return an http error.
         return Err(anyhow::anyhow!("cannot find the store entry"));
@@ -92,7 +91,7 @@ pub async fn handle_request(
     let addr = format!("127.0.0.1:{}", port);
     let method = req.method();
 
-    println!("trying to connect to {}, {}", addr, method);
+    info!("Connecting to {} (host={})", port, host_value);
 
     // bi directionnal tunnel for websocket and that stuffs
     if method == Method::CONNECT || req.headers().contains_key("Upgrade") {
@@ -102,11 +101,11 @@ pub async fn handle_request(
             match hyper::upgrade::on(req).await {
                 Ok(upgraded) => {
                     if let Err(e) = tunnel(upgraded, addr).await {
-                        println!("server io error {}", e);
+                        error!("Server IO error {}", e);
                     }
                 }
                 Err(e) => {
-                    println!("upgrading error: {:?}", e);
+                    error!("Socket upgrade error {}", e);
                 }
             }
         });
@@ -128,7 +127,7 @@ pub async fn handle_request(
 
     tokio::task::spawn(async move {
         if let Err(e) = conn.await {
-            println!("error while connecting {:?}", e);
+            error!("Error while connecting {}", e);
         }
     });
 

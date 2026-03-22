@@ -1,7 +1,7 @@
 use std::process;
 
-use ansi_term::Colour;
 use noport_lib::store::Store;
+use paris::{info, warn};
 
 /// Stop the daemon
 /// Will crash if the daemon is not running
@@ -16,10 +16,12 @@ pub fn stop_daemon(store: Store) -> Result<(), anyhow::Error> {
             return Err(anyhow::anyhow!(e));
         }
 
-        println!("{}", Colour::Fixed(29).paint("Daemon stopped successfully"));
+        info!("NoPort daemon stopped with success");
 
         return store.remove_daemon_process_id();
     } else {
-        Err(anyhow::anyhow!("The deamon is not running"))
+        warn!("NoPort daemon is not running (cannot stop it then)");
     }
+
+    Ok(())
 }
