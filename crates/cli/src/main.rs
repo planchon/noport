@@ -5,7 +5,7 @@ use noport_lib::store::Store;
 
 use noport_lib::setup::setup_certificate;
 use noport_lib::subprocess::start;
-use paris::info;
+use paris::success;
 use tokio::runtime::Runtime;
 
 use crate::start::start_background;
@@ -90,7 +90,7 @@ fn main() -> Result<(), anyhow::Error> {
     }
 
     if !cli.child_args.is_empty() {
-        info!("Starting the child process ({})", cli.child_args.join(" "));
+        success!("Starting the child process ({})", cli.child_args.join(" "));
 
         let runtime = Runtime::new().unwrap();
 

@@ -29,6 +29,11 @@ impl Store {
         let home_folder = home_dir.join(".noport").to_string_lossy().to_string();
         let host_folder = home_dir.join(".noport/hosts").to_string_lossy().to_string();
 
+        if !fs::exists(home_folder.clone()).unwrap() {
+            info!("Creating the .noport folder ({})", home_folder.clone());
+            fs::create_dir(home_folder.clone()).unwrap();
+        }
+
         if !fs::exists(host_folder.clone()).unwrap() {
             info!("Creating the hosts folder ({})", host_folder.clone());
             fs::create_dir(host_folder.clone()).unwrap();
@@ -69,8 +74,6 @@ impl Store {
         let host_file = format!("{}/{}", self.host_folder, domain);
         let content = json!(entry).to_string();
 
-        println!("writing file {}", host_file);
-
         fs::write(host_file, content).unwrap();
 
         Ok(())
@@ -82,12 +85,6 @@ impl Store {
         let is_dev = env::var("DEV").is_ok();
         let mut store = self.inner.lock().await;
         let sub_domain = host.replace(".localhost", "");
-
-        // println!(
-        //     "finding store entry for {} (dev {})",
-        //     sub_domain.clone(),
-        //     is_dev.clone()
-        // );
 
         // in dev we also look for the file disk
         if !is_dev {

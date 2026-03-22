@@ -6,13 +6,13 @@ use std::{
 };
 
 use noport_lib::store::Store;
-use paris::{error, info, warn};
+use paris::{error, info, success, warn};
 use tokio::runtime::Runtime;
 
 /// Start the daemon in the foreground
 pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
     let runtime = Runtime::new().unwrap();
-    info!("Starting the daemon proxy server (port={})", ":2828");
+    info!("Starting the daemon proxy server (port={})", "2828");
 
     let result = runtime.block_on(daemon::daemon::start_deamon(store, None));
 
@@ -21,7 +21,7 @@ pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
         return Ok(());
     }
 
-    info!("Proxy started.");
+    success!("Proxy started.");
 
     Ok(())
 }
@@ -62,7 +62,7 @@ pub fn start_background(store: Store) -> Result<(), anyhow::Error> {
     let pid = child.id();
     store.set_daemon_process_id(pid)?;
 
-    info!("Daemon running on {} (PID: {})", ":2828", pid.to_string());
+    success!("Daemon running on {} (PID: {})", ":2828", pid.to_string());
 
     Ok(())
 }
