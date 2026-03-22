@@ -95,7 +95,9 @@ pub async fn handle_request(
     println!("trying to connect to {}, {}", addr, method);
 
     // bi directionnal tunnel for websocket and that stuffs
-    if method == Method::CONNECT {
+    if method == Method::CONNECT || req.headers().contains_key("Upgrade") {
+        println!("Upgrading the connection");
+
         tokio::task::spawn(async move {
             match hyper::upgrade::on(req).await {
                 Ok(upgraded) => {
