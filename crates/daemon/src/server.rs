@@ -5,7 +5,7 @@ use hyper::{Method, Response, StatusCode, Uri, body::Bytes, upgrade::Upgraded};
 
 use hyper_util::rt::TokioIo;
 use noport_lib::store::Store;
-use paris::{error, info, warn};
+use paris::{error, info, log, warn};
 use tokio::net::TcpStream;
 
 type ClientBuilder = hyper::client::conn::http1::Builder;
@@ -52,13 +52,7 @@ async fn tunnel(upgraded: Upgraded, addr: String) -> io::Result<()> {
     let mut server = TcpStream::connect(addr).await?;
     let mut upgraded = TokioIo::new(upgraded);
 
-    let (from_client, from_server) =
-        tokio::io::copy_bidirectional(&mut upgraded, &mut server).await?;
-
-    info!(
-        "Client wrote {} bytes and received {} bytes",
-        from_client, from_server
-    );
+    tokio::io::copy_bidirectional(&mut upgraded, &mut server).await?;
 
     Ok(())
 }
@@ -91,7 +85,7 @@ pub async fn handle_request(
     let addr = format!("127.0.0.1:{}", port);
     let method = req.method();
 
-    info!("Connecting to {} (host={})", port, host_value);
+    // log!("Connecting to {} (host={})", port, host_value);
 
     // bi directionnal tunnel for websocket and that stuffs
     if method == Method::CONNECT || req.headers().contains_key("Upgrade") {
