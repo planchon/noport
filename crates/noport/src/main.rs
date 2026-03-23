@@ -51,8 +51,6 @@ struct NoPort {
 
 #[derive(Subcommand, Debug)]
 enum NoPortCommand {
-    /// Setup HTTPS certificate and key
-    Setup,
     /// Start the proxy server
     Start {
         /// Run the daemon in the foreground
@@ -75,9 +73,9 @@ fn main() -> Result<(), anyhow::Error> {
 
     if let Some(command) = cli.command {
         match command {
-            NoPortCommand::Setup => {
-                setup_certificate();
-            }
+            // NoPortCommand::Setup => {
+            //     setup_certificate();
+            // }
             NoPortCommand::Stop => {
                 return stop::stop_daemon(store);
             }
@@ -85,8 +83,9 @@ fn main() -> Result<(), anyhow::Error> {
                 return status::status(store);
             }
             // start the daemon proxy server
+            // this part could run in sudo
             NoPortCommand::Start { foreground, tld } => {
-                store.set_tld(tld);
+                store.set_tld(tld)?;
 
                 if foreground {
                     return start_foreground(store);

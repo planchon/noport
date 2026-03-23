@@ -1,10 +1,11 @@
-use std::env;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use paris::info;
+use paris::success;
+use paris::warn;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -18,7 +19,7 @@ pub struct StoreEntry {
 
 #[derive(Debug, Clone)]
 pub struct Store {
-    inner: Arc<Mutex<Vec<StoreEntry>>>,
+    pub inner: Arc<Mutex<Vec<StoreEntry>>>,
 
     host_folder: PathBuf,
     root_folder: PathBuf,
@@ -30,18 +31,15 @@ impl Store {
 
         let host_folder = home_folder.join("hosts");
 
-        if !fs::exists(home_folder.clone()).unwrap() {
+        if !fs::exists(&home_folder).unwrap() {
             info!(
                 "Creating the .noport folder ({})",
                 home_folder.to_string_lossy()
             );
+            fs::create_dir(&home_folder).unwrap();
         }
-        if !fs::exists(host_folder.clone()).unwrap() {
-            info!(
-                "Creating the hosts folder ({})",
-                host_folder.to_string_lossy()
-            );
-            fs::create_dir(host_folder.clone()).unwrap();
+        if !fs::exists(&host_folder).unwrap() {
+            fs::create_dir(&host_folder).unwrap();
         }
 
         Self {
@@ -51,38 +49,37 @@ impl Store {
         }
     }
 
+    pub fn root_folder(&self) -> PathBuf {
+        self.root_folder.clone()
+    }
+
+    /// Set the global TLD
     pub fn set_tld(&self, tld: String) -> Result<(), anyhow::Error> {
         let path = Path::new(&self.root_folder).join("tld");
         fs::write(path, tld).unwrap();
         Ok(())
     }
 
+    /// Get the global TLD
     pub fn get_tld(&self) -> String {
         let path = Path::new(&self.root_folder).join("tld");
         let content = fs::read_to_string(path).unwrap();
         content
     }
 
+    /// CLI land
+    /// Add a new proxy entry to the process
     pub async fn add_proxy_entry(
         &self,
         path: String,
         domain: String,
         port: i32,
     ) -> Result<(), anyhow::Error> {
-        let mut store = self.inner.lock().await;
-
-        // verify the domain is not already in use
-        if store.iter().any(|e| e.domain == domain) {
-            return Err(anyhow::anyhow!("domain already in use"));
-        }
-
         let entry = StoreEntry {
             port,
             domain: domain.clone(),
             path: path.clone(),
         };
-
-        store.push(entry.clone());
 
         let host_file = format!("{}/{}", self.host_folder.to_string_lossy(), domain);
         let content = json!(entry).to_string();
@@ -92,29 +89,17 @@ impl Store {
         Ok(())
     }
 
-    /// Return the possible StoreEntry for a given domain, if any
+    /// Daemon land
+    /// Resolve the reverse proxy call
     /// Example: api.localhost -> StoreEntry { port: , domain: "api.localhost", path: "" }
     pub async fn reverse_proxy(&self, host: String) -> Option<StoreEntry> {
-        let is_dev = env::var("DEV").is_ok();
-        let mut store = self.inner.lock().await;
-        let sub_domain = host.replace(".localhost", "");
+        let store = self.inner.lock().await;
 
-        // in dev we also look for the file disk
-        if !is_dev {
-            if let Some(entry) = store.iter().find(|e| e.domain == sub_domain) {
-                return Some(entry.clone());
-            }
-        }
+        let tld = format!(".{}", self.get_tld());
+        let sub_domain = host.replace(tld.as_str(), "");
 
-        let host_file = format!("{}/{}", self.host_folder.to_string_lossy(), sub_domain);
-
-        if fs::exists(host_file.clone()).unwrap() {
-            let content = fs::read_to_string(host_file.clone()).unwrap();
-            let entry: StoreEntry = serde_json::from_str(content.as_str()).unwrap();
-
-            store.push(entry.clone());
-
-            return Some(entry);
+        if let Some(entry) = store.iter().find(|e| e.domain == sub_domain) {
+            return Some(entry.clone());
         }
 
         None
