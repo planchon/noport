@@ -58,6 +58,10 @@ enum NoPortCommand {
         /// Run the daemon in the foreground
         #[arg(short, long, default_value_t = false)]
         foreground: bool,
+
+        /// Change the TLD (default is .lan)
+        #[arg(short, long, default_value = "lan")]
+        tld: String,
     },
     Stop,
     Status,
@@ -79,7 +83,9 @@ fn main() -> Result<(), anyhow::Error> {
                 return status::status(store);
             }
             // start the daemon proxy server
-            NoPortCommand::Start { foreground } => {
+            NoPortCommand::Start { foreground, tld } => {
+                store.set_tld(tld);
+
                 if foreground {
                     return start_foreground(store);
                 } else {

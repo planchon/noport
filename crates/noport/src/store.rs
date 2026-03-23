@@ -46,6 +46,18 @@ impl Store {
         }
     }
 
+    pub fn set_tld(&self, tld: String) -> Result<(), anyhow::Error> {
+        let path = Path::new(&self.root_folder).join("tld");
+        fs::write(path, tld).unwrap();
+        Ok(())
+    }
+
+    pub fn get_tld(&self) -> String {
+        let path = Path::new(&self.root_folder).join("tld");
+        let content = fs::read_to_string(path).unwrap();
+        content
+    }
+
     pub fn get_root_folder(&self) -> String {
         self.root_folder.clone()
     }
