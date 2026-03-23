@@ -29,11 +29,11 @@ noport -- vite
 ## Roadmap
 before calling `noport` ready, I would like to ship these features (this is the `v1` roadmap)
 
-- [ ] `https` support
+- [x] hosts file watch (using notify)
 - [ ] custom `tld` (like `.lan`, `.home`, `.test` etc)
+- [ ] `https` support
 - [ ] automatic sub-domain generation (based on folder, git branch, git worktree)
 - [ ] support famous frameworks (vite, next, nest, ...)
-- [ ] hosts file watch (using notify)
 
 ## Install
 The software is not installable yet. will be soon (when the roadmap of the v1 is finished)
