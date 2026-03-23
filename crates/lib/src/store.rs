@@ -1,9 +1,10 @@
 use std::env;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use paris::{error, info};
+use paris::info;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -19,23 +20,27 @@ pub struct StoreEntry {
 pub struct Store {
     inner: Arc<Mutex<Vec<StoreEntry>>>,
 
-    host_folder: String,
-    root_folder: String,
+    host_folder: PathBuf,
+    root_folder: PathBuf,
 }
 
 impl Store {
     pub fn new() -> Self {
-        let home_dir = env::home_dir().unwrap();
-        let home_folder = home_dir.join(".noport").to_string_lossy().to_string();
-        let host_folder = home_dir.join(".noport/hosts").to_string_lossy().to_string();
+        let home_folder = Path::new("/tmp/.noport").to_path_buf();
+
+        let host_folder = home_folder.join("hosts");
 
         if !fs::exists(home_folder.clone()).unwrap() {
-            info!("Creating the .noport folder ({})", home_folder.clone());
-            fs::create_dir(home_folder.clone()).unwrap();
+            info!(
+                "Creating the .noport folder ({})",
+                home_folder.to_string_lossy()
+            );
         }
-
         if !fs::exists(host_folder.clone()).unwrap() {
-            info!("Creating the hosts folder ({})", host_folder.clone());
+            info!(
+                "Creating the hosts folder ({})",
+                host_folder.to_string_lossy()
+            );
             fs::create_dir(host_folder.clone()).unwrap();
         }
 
@@ -56,10 +61,6 @@ impl Store {
         let path = Path::new(&self.root_folder).join("tld");
         let content = fs::read_to_string(path).unwrap();
         content
-    }
-
-    pub fn get_root_folder(&self) -> String {
-        self.root_folder.clone()
     }
 
     pub async fn add_proxy_entry(
@@ -83,7 +84,7 @@ impl Store {
 
         store.push(entry.clone());
 
-        let host_file = format!("{}/{}", self.host_folder, domain);
+        let host_file = format!("{}/{}", self.host_folder.to_string_lossy(), domain);
         let content = json!(entry).to_string();
 
         fs::write(host_file, content).unwrap();
@@ -105,7 +106,7 @@ impl Store {
             }
         }
 
-        let host_file = format!("{}/{}", self.host_folder, sub_domain);
+        let host_file = format!("{}/{}", self.host_folder.to_string_lossy(), sub_domain);
 
         if fs::exists(host_file.clone()).unwrap() {
             let content = fs::read_to_string(host_file.clone()).unwrap();

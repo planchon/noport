@@ -39,7 +39,8 @@ pub fn start_background(store: Store) -> Result<(), anyhow::Error> {
     let exe_path = env::current_exe()?;
 
     // print the stdout and stderr to a file
-    let root_folder = store.get_root_folder();
+    let home_dir = env::home_dir().unwrap();
+    let root_folder = home_dir.join(".noport");
     let log_path = Path::new(&root_folder).join("daemon.log");
     let error_path = Path::new(&root_folder).join("daemon.error");
 

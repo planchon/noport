@@ -4,7 +4,7 @@ use std::{
     process::{Command, ExitStatus, Stdio},
 };
 
-use crate::{domain::generate_domain, hosts::add_host, port::find_free_port, store::Store};
+use crate::{domain::generate_domain, hosts::write_host, port::find_free_port, store::Store};
 
 /// Start a subprocess and return the command and the stdin/stdout/stderr pipes
 pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
@@ -19,7 +19,7 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
 
     let full_domain = format!("{}{}", domain, tld);
 
-    if let Err(e) = add_host(full_domain) {
+    if let Err(e) = write_host(full_domain) {
         warn!("Error while adding the host {}", e);
     }
 
@@ -36,10 +36,9 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
     let main_command = args[0].clone();
     let mut main_args = args[1..].to_vec();
 
+    // vite args
     let port_args = format!("--port={}", port.clone().to_string());
     let host_args = format!("--host=127.0.0.1");
-
-    // main_args.push(port.to_string());
 
     main_args.push(port_args);
     main_args.push(host_args);

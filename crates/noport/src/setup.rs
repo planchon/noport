@@ -1,5 +1,5 @@
 use paris::info;
 
-pub fn setup_certificate() {
-    info!("Setting up the certificates");
+pub fn setup() {
+    info!("Setuping all the right certificates (for local HTTPS)");
 }

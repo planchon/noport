@@ -17,11 +17,22 @@ vite
 noport -- vite 
 ```
 
-### Customize the subdomain
-The subdomain can be changes : 
-- `--domain sub_domain` you choose your subdomain 
-- `--git-branch` we will infer a sub domain from the branch name 
-- `--git-worktree` we will infer a sub domain from the worktree
+### Commands
+
+- `noport -- anything` to start a process through noport 
+- `noport start` to start the daemon (and the proxy)
+
+#### Other commands
+- `noport stop` to stop the daemon
+- `noport status` to get the status of daemon
+
+## Roadmap
+before calling `noport` ready, I would like to ship these features (this is the `v1` roadmap)
+
+- [ ] `https` support
+- [ ] custom `tld` (like `.lan`, `.home`, `.test` etc)
+- [ ] automatic sub-domain generation (based on folder, git branch, git worktree)
+- [ ] support famous frameworks (vite, next, nest, ...)
 
 ## Install
-The software is not installable yet. will be soon
+The software is not installable yet. will be soon (when the roadmap of the v1 is finished)

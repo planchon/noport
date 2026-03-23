@@ -59,8 +59,10 @@ enum NoPortCommand {
         #[arg(short, long, default_value_t = false)]
         foreground: bool,
 
-        /// Change the TLD (default is .lan)
-        #[arg(short, long, default_value = "lan")]
+        /// Change the TLD (default is .localhost)
+        /// You can use .test, .lan and .home without any problems
+        /// all other TLDs can lead to problems
+        #[arg(short, long, default_value = "localhost")]
         tld: String,
     },
     Stop,
