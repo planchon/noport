@@ -12,7 +12,11 @@ use tokio::runtime::Runtime;
 /// Start the daemon in the foreground
 pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
     let runtime = Runtime::new().unwrap();
-    info!("Starting the daemon proxy server (port={})", "2828");
+    let tld = store.get_tld();
+    info!(
+        "Starting the daemon proxy server (port={}, tld={})",
+        "2828", tld
+    );
 
     let result = runtime.block_on(daemon::daemon::start_deamon(store, None));
 
@@ -20,8 +24,6 @@ pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
         error!("Error starting the daemon: {}", e);
         return Ok(());
     }
-
-    success!("Proxy started.");
 
     Ok(())
 }

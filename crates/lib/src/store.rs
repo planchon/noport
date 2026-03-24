@@ -3,9 +3,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use paris::error;
 use paris::info;
-use paris::success;
-use paris::warn;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -84,7 +83,10 @@ impl Store {
         let host_file = format!("{}/{}", self.host_folder.to_string_lossy(), domain);
         let content = json!(entry).to_string();
 
-        fs::write(host_file, content).unwrap();
+        if let Err(e) = fs::write(host_file.clone(), content) {
+            error!("cannot write the entry file (path={})", host_file);
+            return Err(anyhow::Error::new(e));
+        }
 
         Ok(())
     }

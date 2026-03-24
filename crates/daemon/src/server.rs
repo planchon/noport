@@ -1,11 +1,11 @@
 use std::io;
 
-use http_body_util::{BodyExt, Empty, Full, combinators::BoxBody};
-use hyper::{Method, Response, StatusCode, Uri, body::Bytes, upgrade::Upgraded};
+use http_body_util::{BodyExt, Empty, combinators::BoxBody};
+use hyper::{Method, Response, body::Bytes, upgrade::Upgraded};
 
 use hyper_util::rt::TokioIo;
 use noport_lib::store::Store;
-use paris::{error, info, log, warn};
+use paris::error;
 use tokio::net::TcpStream;
 
 type ClientBuilder = hyper::client::conn::http1::Builder;
@@ -30,16 +30,6 @@ fn extract_host(req: &hyper::Request<hyper::body::Incoming>) -> Option<String> {
     }
 
     None
-}
-
-fn host_addr(uri: &Uri) -> Option<String> {
-    uri.authority().map(|auth| auth.to_string())
-}
-
-fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, hyper::Error> {
-    Full::new(chunk.into())
-        .map_err(|never| match never {})
-        .boxed()
 }
 
 fn empty() -> BoxBody<Bytes, hyper::Error> {

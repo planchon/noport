@@ -1,10 +1,10 @@
-use paris::{error, info, warn};
+use paris::{error, info};
 use std::{
     env,
     process::{Command, ExitStatus, Stdio},
 };
 
-use crate::{domain::generate_domain, hosts::write_host, port::find_free_port, store::Store};
+use crate::{domain::generate_domain, port::find_free_port, store::Store};
 
 /// Start a subprocess and return the command and the stdin/stdout/stderr pipes
 pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
@@ -15,13 +15,6 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
     let port = find_free_port().await.unwrap();
     let current_dir = env::current_dir().unwrap().to_string_lossy().to_string();
     let domain = generate_domain(&current_dir).unwrap();
-    let tld = store.get_tld();
-
-    let full_domain = format!("{}{}", domain, tld);
-
-    if let Err(e) = write_host(full_domain) {
-        warn!("Error while adding the host {}", e);
-    }
 
     // register the new element to the store
     if let Err(e) = store
