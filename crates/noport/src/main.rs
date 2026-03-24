@@ -67,7 +67,8 @@ enum NoPortCommand {
     Status,
 }
 
-fn main() -> Result<(), anyhow::Error> {
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
     let cli = NoPort::parse();
     let store = Store::new();
 
@@ -80,7 +81,7 @@ fn main() -> Result<(), anyhow::Error> {
                 return stop::stop_daemon(store);
             }
             NoPortCommand::Status => {
-                return status::status(store);
+                return status::status().await;
             }
             // start the daemon proxy server
             // this part could run in sudo
@@ -88,7 +89,7 @@ fn main() -> Result<(), anyhow::Error> {
                 store.set_tld(tld)?;
 
                 if foreground {
-                    return start_foreground(store);
+                    return start_foreground(store).await;
                 } else {
                     return start_background(store);
                 }
@@ -99,9 +100,7 @@ fn main() -> Result<(), anyhow::Error> {
     if !cli.child_args.is_empty() {
         success!("Starting the child process ({})", cli.child_args.join(" "));
 
-        let runtime = Runtime::new().unwrap();
-
-        runtime.block_on(start(cli.child_args, store));
+        start(cli.child_args, store).await;
     }
 
     Ok(())

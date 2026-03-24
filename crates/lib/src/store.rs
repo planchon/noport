@@ -55,7 +55,16 @@ impl Store {
     /// Set the global TLD
     pub fn set_tld(&self, tld: String) -> Result<(), anyhow::Error> {
         let path = Path::new(&self.root_folder).join("tld");
-        fs::write(path, tld).unwrap();
+        if let Err(e) = fs::write(path.clone(), tld.clone()) {
+            error!(
+                "error writing the tld (tld={}, path={}): {}",
+                tld,
+                path.to_string_lossy(),
+                e
+            );
+            return Err(anyhow::Error::new(e));
+        }
+
         Ok(())
     }
 

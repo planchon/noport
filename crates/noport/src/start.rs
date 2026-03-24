@@ -7,18 +7,31 @@ use std::{
 
 use noport_lib::store::Store;
 use paris::{error, info, success, warn};
-use tokio::runtime::Runtime;
+use tokio::{
+    runtime::Runtime,
+    signal::{self, unix::signal},
+    sync::mpsc::channel,
+};
 
 /// Start the daemon in the foreground
-pub fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
-    let runtime = Runtime::new().unwrap();
+pub async fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
     let tld = store.get_tld();
+    let (shutdown_tx, shutdown_rx) = channel(1);
     info!(
         "Starting the daemon proxy server (port={}, tld={})",
         "2828", tld
     );
 
-    let result = runtime.block_on(daemon::daemon::start_deamon(store, None));
+    tokio::spawn(async move {
+        match signal::ctrl_c().await {
+            Ok(()) => shutdown_tx.send(()).await.unwrap(),
+            Err(e) => {
+                error!("error in the ctrl_c signal {}", e);
+            }
+        }
+    });
+
+    let result = daemon::daemon::start_deamon(store, None, shutdown_rx).await;
 
     if let Err(e) = result {
         error!("Error starting the daemon: {}", e);

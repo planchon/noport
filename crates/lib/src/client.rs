@@ -4,14 +4,13 @@ use tokio::{
     net::UnixSocket,
 };
 
-use crate::communication::NoPortCommunication;
-
-const DEFAULT_SOCKET: &str = "/var/run/noport.socket";
+use crate::communication::{NoPortCommunication, get_socket};
 
 pub async fn send_command(command: NoPortCommunication) -> Result<(), anyhow::Error> {
+    let socket_path = get_socket();
     let socket = UnixSocket::new_stream()?;
 
-    let mut stream = socket.connect(DEFAULT_SOCKET).await?;
+    let mut stream = socket.connect(socket_path).await?;
 
     let command_clone = command.clone();
 
