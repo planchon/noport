@@ -3,7 +3,10 @@ use std::{fs, io, process::exit};
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use paris::{error, info, success};
-use tokio::{net::TcpListener, sync::mpsc::Receiver};
+use tokio::{
+    net::TcpListener,
+    sync::mpsc::{Receiver, Sender},
+};
 
 use noport_lib::{communication::get_socket, store::Store};
 
@@ -16,7 +19,7 @@ const DEFAULT_ADDR: &str = "127.0.0.1:2828";
 pub async fn start_deamon(
     store: Store,
     addr: Option<String>,
-    mut shutdown: Receiver<()>,
+    shutdown_tx: Sender<()>,
 ) -> io::Result<()> {
     let addr = addr.unwrap_or_else(|| DEFAULT_ADDR.to_string());
 
@@ -24,24 +27,8 @@ pub async fn start_deamon(
 
     // run the socket (interaction between CLI and Daemon)
     tokio::spawn(async move {
-        if let Err(e) = create_socket(&socket_store).await {
+        if let Err(e) = create_socket(&socket_store, shutdown_tx).await {
             error!("error while creating the socket (path={})", e);
-        }
-    });
-
-    tokio::spawn(async move {
-        match shutdown.recv().await {
-            Some(()) => {
-                let path = get_socket();
-                info!("stopping the socket {}", path);
-                if let Err(e) = fs::remove_file(path) {
-                    error!("error while deleting the socket {}", e);
-                }
-                exit(1);
-            }
-            None => {
-                error!("received nothing on the shutdown channel ??");
-            }
         }
     });
 

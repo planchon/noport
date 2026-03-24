@@ -2,36 +2,52 @@ use std::{
     env,
     fs::{self, File},
     path::Path,
-    process::Command,
+    process::{Command, exit},
 };
 
-use noport_lib::store::Store;
+use noport_lib::{communication::get_socket, store::Store};
 use paris::{error, info, success, warn};
 use tokio::{
-    runtime::Runtime,
-    signal::{self, unix::signal},
+    signal::{self},
     sync::mpsc::channel,
 };
 
 /// Start the daemon in the foreground
 pub async fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
     let tld = store.get_tld();
-    let (shutdown_tx, shutdown_rx) = channel(1);
+    let (shutdown_tx, mut shutdown_rx) = channel(1);
     info!(
         "Starting the daemon proxy server (port={}, tld={})",
         "2828", tld
     );
 
+    let shutdown_tx_clone = shutdown_tx.clone();
     tokio::spawn(async move {
         match signal::ctrl_c().await {
-            Ok(()) => shutdown_tx.send(()).await.unwrap(),
+            Ok(()) => shutdown_tx_clone.send(()).await.unwrap(),
             Err(e) => {
                 error!("error in the ctrl_c signal {}", e);
             }
         }
     });
 
-    let result = daemon::daemon::start_deamon(store, None, shutdown_rx).await;
+    tokio::spawn(async move {
+        match shutdown_rx.recv().await {
+            Some(()) => {
+                let path = get_socket();
+                info!("stopping the socket {}", path);
+                if let Err(e) = fs::remove_file(path) {
+                    error!("error while deleting the socket {}", e);
+                }
+                exit(1);
+            }
+            None => {
+                error!("received nothing on the shutdown channel ??");
+            }
+        }
+    });
+
+    let result = daemon::daemon::start_deamon(store, None, shutdown_tx).await;
 
     if let Err(e) = result {
         error!("Error starting the daemon: {}", e);

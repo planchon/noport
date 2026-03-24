@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub enum NoPortCommunication {
     CreateHost {
         domain: String,
-        port: u16,
+        port: i32,
         path: String,
     },
     RemoveHost {

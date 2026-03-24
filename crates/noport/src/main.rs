@@ -78,7 +78,7 @@ async fn main() -> Result<(), anyhow::Error> {
             //     setup_certificate();
             // }
             NoPortCommand::Stop => {
-                return stop::stop_daemon(store);
+                return stop::stop_daemon().await;
             }
             NoPortCommand::Status => {
                 return status::status().await;

@@ -8,25 +8,42 @@ use paris::{error, info, success};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
     net::{UnixListener, UnixStream},
+    sync::mpsc::Sender,
 };
 
 /// Create the socket for the client <--> daemon communication
-pub async fn create_socket(store: &Store) -> Result<(), anyhow::Error> {
+pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<(), anyhow::Error> {
     let socket_path = get_socket();
     let listener = UnixListener::bind(socket_path)?;
 
     success!("socket started (path={})", socket_path);
 
     while let Ok((mut stream, _)) = listener.accept().await {
+        let store_clone = store.clone();
+        let shutdown_clone = shutdown_tx.clone();
+
         tokio::spawn(async move {
-            handle_connection(stream).await;
+            handle_connection(stream, &store_clone, shutdown_clone).await;
         });
     }
 
     Ok(())
 }
 
-async fn handle_connection(mut stream: UnixStream) -> Result<(), anyhow::Error> {
+async fn send_ok(mut stream: UnixStream) {
+    let ok = serde_json::to_string(&NoPortCommunication::Ok).unwrap();
+    if let Err(e) = stream.write(ok.as_bytes()).await {
+        error!("error while sending OK {}", e);
+    } else {
+        info!("OK sent");
+    }
+}
+
+async fn handle_connection(
+    mut stream: UnixStream,
+    store: &Store,
+    shutdown_tx: Sender<()>,
+) -> Result<(), anyhow::Error> {
     let mut buffer = [0; 1024];
 
     match stream.read(&mut buffer).await {
@@ -37,18 +54,17 @@ async fn handle_connection(mut stream: UnixStream) -> Result<(), anyhow::Error> 
             match communication {
                 NoPortCommunication::CreateHost { domain, port, path } => {
                     info!("[comms] adding a host ({}, {}, {})", domain, port, path);
+                    store.add_proxy_entry(path, domain.clone(), port).await?;
+                    info!("[comms] entry add! ({})", domain);
                 }
                 NoPortCommunication::Stop => {
                     info!("[comms] stopping the daemon");
+                    send_ok(stream).await;
+                    shutdown_tx.send(()).await.unwrap();
                 }
                 NoPortCommunication::Status => {
                     info!("[comms] getting status");
-                    let ok = serde_json::to_string(&NoPortCommunication::Ok).unwrap();
-                    if let Err(e) = stream.write(ok.as_bytes()).await {
-                        error!("error while sending status {}", e);
-                    } else {
-                        info!("status sent");
-                    }
+                    send_ok(stream).await;
                 }
                 NoPortCommunication::RemoveHost { domain } => {
                     info!("[comms] removing a host ({})", domain);
