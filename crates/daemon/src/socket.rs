@@ -2,7 +2,7 @@ use std::io::{BufRead, Read};
 
 use noport_lib::{
     communication::{NoPortCommunication, get_socket},
-    store::Store,
+    store::{Store, StoreEntry},
 };
 use paris::{error, info, success};
 use tokio::{
@@ -54,7 +54,12 @@ async fn handle_connection(
             match communication {
                 NoPortCommunication::CreateHost { domain, port, path } => {
                     info!("[comms] adding a host ({}, {}, {})", domain, port, path);
-                    store.add_proxy_entry(path, domain.clone(), port).await?;
+                    let mut inner = store.inner.lock().await;
+                    inner.push(StoreEntry {
+                        domain: domain.clone(),
+                        port,
+                        path,
+                    });
                     info!("[comms] entry add! ({})", domain);
                 }
                 NoPortCommunication::Stop => {

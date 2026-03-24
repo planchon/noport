@@ -12,6 +12,8 @@ use tokio::{
     sync::mpsc::channel,
 };
 
+use crate::status::{get_status, status};
+
 /// Start the daemon in the foreground
 pub async fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
     let tld = store.get_tld();
@@ -60,11 +62,10 @@ pub async fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
 /// Start the daemon in the background
 /// Will not launch another daemon if one is already running
 /// Stores the process id in the store (in ~/.noport/daemon.pid)
-pub fn start_background(store: Store) -> Result<(), anyhow::Error> {
-    if let Ok(process_id) = store.get_daemon_process_id() {
-        warn!("Daemon is already running");
-        warn!("Running on PID: <i>{}</i>", process_id.clone().to_string());
-        return Ok(());
+pub async fn start_background() -> Result<(), anyhow::Error> {
+    if let Ok(()) = get_status().await {
+        warn!("Daemon already running");
+        exit(1);
     }
 
     let exe_path = env::current_exe()?;
@@ -92,7 +93,6 @@ pub fn start_background(store: Store) -> Result<(), anyhow::Error> {
         .spawn()?;
 
     let pid = child.id();
-    store.set_daemon_process_id(pid)?;
 
     success!("Daemon running on {} (PID: {})", ":2828", pid.to_string());
 

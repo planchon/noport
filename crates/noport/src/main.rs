@@ -91,7 +91,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 if foreground {
                     return start_foreground(store).await;
                 } else {
-                    return start_background(store);
+                    return start_background().await;
                 }
             }
         }
