@@ -4,10 +4,13 @@ use std::{
     process::{Command, ExitStatus, Stdio},
 };
 
-use crate::{domain::generate_domain, port::find_free_port, store::Store};
+use crate::{
+    client::send_command, communication::NoPortCommunication, domain::generate_domain,
+    port::find_free_port,
+};
 
 /// Start a subprocess and return the command and the stdin/stdout/stderr pipes
-pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
+pub async fn start(args: Vec<String>) -> Option<ExitStatus> {
     if args.is_empty() {
         return None;
     }
@@ -16,13 +19,14 @@ pub async fn start(args: Vec<String>, store: Store) -> Option<ExitStatus> {
     let current_dir = env::current_dir().unwrap().to_string_lossy().to_string();
     let domain = generate_domain(&current_dir).unwrap();
 
-    // register the new element to the store
-    if let Err(e) = store
-        .add_proxy_entry(current_dir.clone(), domain.clone(), port)
-        .await
-    {
-        error!("Error while registering the process {}", e);
-        return None;
+    let command = NoPortCommunication::CreateHost {
+        domain: domain.clone(),
+        port,
+        path: current_dir,
+    };
+
+    if let Err(e) = send_command(command).await {
+        error!("could not register the host {}", e);
     }
 
     // start the subprocess

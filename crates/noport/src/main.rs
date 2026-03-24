@@ -70,7 +70,6 @@ enum NoPortCommand {
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let cli = NoPort::parse();
-    let store = Store::new();
 
     if let Some(command) = cli.command {
         match command {
@@ -86,6 +85,7 @@ async fn main() -> Result<(), anyhow::Error> {
             // start the daemon proxy server
             // this part could run in sudo
             NoPortCommand::Start { foreground, tld } => {
+                let store = Store::new();
                 store.set_tld(tld)?;
 
                 if foreground {
@@ -100,7 +100,7 @@ async fn main() -> Result<(), anyhow::Error> {
     if !cli.child_args.is_empty() {
         success!("Starting the child process ({})", cli.child_args.join(" "));
 
-        start(cli.child_args, store).await;
+        start(cli.child_args).await;
     }
 
     Ok(())

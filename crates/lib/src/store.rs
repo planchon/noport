@@ -6,7 +6,6 @@ use std::sync::Arc;
 use paris::error;
 use paris::info;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,31 +74,6 @@ impl Store {
         content
     }
 
-    /// CLI land
-    /// Add a new proxy entry to the process
-    pub async fn add_proxy_entry(
-        &self,
-        path: String,
-        domain: String,
-        port: i32,
-    ) -> Result<(), anyhow::Error> {
-        let entry = StoreEntry {
-            port,
-            domain: domain.clone(),
-            path: path.clone(),
-        };
-
-        let host_file = format!("{}/{}", self.host_folder.to_string_lossy(), domain);
-        let content = json!(entry).to_string();
-
-        if let Err(e) = fs::write(host_file.clone(), content) {
-            error!("cannot write the entry file (path={})", host_file);
-            return Err(anyhow::Error::new(e));
-        }
-
-        Ok(())
-    }
-
     /// Daemon land
     /// Resolve the reverse proxy call
     /// Example: api.localhost -> StoreEntry { port: , domain: "api.localhost", path: "" }
@@ -114,26 +88,5 @@ impl Store {
         }
 
         None
-    }
-
-    /// When we start the daemon we set its process id
-    pub fn set_daemon_process_id(&self, process_id: u32) -> Result<(), anyhow::Error> {
-        let path = Path::new(&self.root_folder).join("daemon.pid");
-        fs::write(path, process_id.to_string()).unwrap();
-        Ok(())
-    }
-
-    /// When we stop the daemon we remove its process id
-    pub fn remove_daemon_process_id(&self) -> Result<(), anyhow::Error> {
-        let path = Path::new(&self.root_folder).join("daemon.pid");
-        fs::remove_file(path).unwrap();
-        Ok(())
-    }
-
-    pub fn get_daemon_process_id(&self) -> Result<u32, anyhow::Error> {
-        let path = Path::new(&self.root_folder).join("daemon.pid");
-        let content = fs::read_to_string(path)?;
-        let process_id: u32 = content.parse()?;
-        Ok(process_id)
     }
 }
