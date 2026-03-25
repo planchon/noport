@@ -32,7 +32,7 @@ noport -- vite
 ## Roadmap
 before calling `noport` ready, I would like to ship these features (this is the `v1` roadmap)
 
-- [ ] socket / client communication
+- [x] socket / client communication
 - [ ] sudo management (for `port < 1024` and `/etc/hosts edits`) 
 - [ ] custom `tld` (like `.lan`, `.home`, `.test` etc)
 - [ ] `https` support
