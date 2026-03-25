@@ -35,8 +35,8 @@ before calling `noport` ready, I would like to ship these features (this is the 
 - [x] socket / client communication
 - [ ] sudo management (for `port < 1024` and `/etc/hosts edits`) 
 - [ ] custom `tld` (like `.lan`, `.home`, `.test` etc)
-- [ ] `https` support
 - [ ] automatic sub-domain generation (based on folder, git branch, git worktree)
+- [ ] `https` support
 - [ ] support famous frameworks (vite, next, nest, ...)
 
 ## Install

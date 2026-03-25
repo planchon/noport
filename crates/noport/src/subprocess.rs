@@ -25,6 +25,7 @@ pub async fn start_subcommand(args: Vec<String>) -> Option<ExitStatus> {
     if let Err(_) = get_status().await {
         info!("The daemon is not runnning, launching it");
         start_background().await.ok()?;
+        // this works but i can do better (polling?)
         // wait for the daemon to be ready
         sleep(Duration::from_millis(250)).await;
     }
@@ -67,4 +68,14 @@ pub async fn start_subcommand(args: Vec<String>) -> Option<ExitStatus> {
         .expect("Failed to start subprocess");
 
     Some(status)
+}
+
+pub fn rerun_as_sudo() {
+    Command::new("sudo")
+        .args(env::args())
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("could not rerun the command as sudo");
 }

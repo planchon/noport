@@ -588,6 +588,7 @@ dependencies = [
  "anyhow",
  "clap",
  "daemon",
+ "nix",
  "noport-lib",
  "paris",
  "tokio",

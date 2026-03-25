@@ -1,3 +1,6 @@
+use std::env;
+
+use clap::Command;
 use clap::Parser;
 use clap::Subcommand;
 
@@ -33,9 +36,13 @@ struct NoPort {
     #[arg(short, long)]
     domain: Option<String>,
 
-    /// Set the app port to use
+    /// Force the port of the child app (your app)
     #[arg(short, long)]
     app_port: Option<u16>,
+
+    /// Port used by the proxy
+    #[arg(short, long)]
+    port: Option<u16>,
 
     /// Use the git branch name as subdomain
     #[arg(long, default_value_t = false)]
@@ -68,9 +75,33 @@ enum NoPortCommand {
     Status,
 }
 
+fn need_sudo(cli: &NoPort) -> bool {
+    if nix::unistd::Uid::current().is_root() {
+        return false;
+    }
+
+    if let Some(command) = &cli.command {
+        match command {
+            NoPortCommand::Start { foreground, tld } => {
+                if (cli.port.is_some() && cli.app_port.unwrap() < 1024) || tld != "localhost" {
+                    return true;
+                }
+                return false;
+            }
+            _ => {
+                return false;
+            }
+        }
+    }
+
+    false
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let cli = NoPort::parse();
+
+    if need_sudo(&cli) {}
 
     if let Some(command) = cli.command {
         match command {
