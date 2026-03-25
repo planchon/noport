@@ -4,17 +4,18 @@ use clap::Subcommand;
 use noport_lib::store::Store;
 
 use noport_lib::setup::setup_certificate;
-use noport_lib::subprocess::start;
 use paris::success;
 use tokio::runtime::Runtime;
 
 use crate::start::start_background;
 use crate::start::start_foreground;
+use crate::subprocess::start_subcommand;
 
 mod setup;
 mod start;
 mod status;
 mod stop;
+mod subprocess;
 
 #[derive(Parser)]
 #[command(
@@ -100,7 +101,7 @@ async fn main() -> Result<(), anyhow::Error> {
     if !cli.child_args.is_empty() {
         success!("Starting the child process ({})", cli.child_args.join(" "));
 
-        start(cli.child_args).await;
+        start_subcommand(cli.child_args).await;
     }
 
     Ok(())

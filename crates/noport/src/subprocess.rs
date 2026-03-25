@@ -1,16 +1,19 @@
-use paris::{error, info};
-use std::{
-    env,
-    process::{Command, ExitStatus, Stdio},
-};
-
-use crate::{
+use noport_lib::{
     client::send_command, communication::NoPortCommunication, domain::generate_domain,
     port::find_free_port,
 };
+use paris::{error, info};
+use std::{
+    env,
+    process::{Command, ExitStatus, Stdio, exit},
+    time::Duration,
+};
+use tokio::time::sleep;
+
+use crate::{start::start_background, status::get_status};
 
 /// Start a subprocess and return the command and the stdin/stdout/stderr pipes
-pub async fn start(args: Vec<String>) -> Option<ExitStatus> {
+pub async fn start_subcommand(args: Vec<String>) -> Option<ExitStatus> {
     if args.is_empty() {
         return None;
     }
@@ -18,6 +21,13 @@ pub async fn start(args: Vec<String>) -> Option<ExitStatus> {
     let port = find_free_port().await.unwrap();
     let current_dir = env::current_dir().unwrap().to_string_lossy().to_string();
     let domain = generate_domain(&current_dir).unwrap();
+
+    if let Err(_) = get_status().await {
+        info!("The daemon is not runnning, launching it");
+        start_background().await.ok()?;
+        // wait for the daemon to be ready
+        sleep(Duration::from_millis(250)).await;
+    }
 
     let command = NoPortCommunication::CreateHost {
         domain: domain.clone(),
@@ -27,6 +37,7 @@ pub async fn start(args: Vec<String>) -> Option<ExitStatus> {
 
     if let Err(e) = send_command(command).await {
         error!("could not register the host {}", e);
+        exit(1);
     }
 
     // start the subprocess

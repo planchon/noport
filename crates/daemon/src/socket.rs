@@ -60,6 +60,7 @@ async fn handle_connection(
                         port,
                         path,
                     });
+                    send_ok(stream).await;
                     info!("[comms] entry add! ({})", domain);
                 }
                 NoPortCommunication::Stop => {
