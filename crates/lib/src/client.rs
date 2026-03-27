@@ -1,5 +1,4 @@
-use nix::libc::exit;
-use paris::{error, info};
+use paris::error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixSocket,
@@ -14,7 +13,6 @@ pub async fn send_command(command: NoPortCommunication) -> Result<(), anyhow::Er
         return Err(socket_path_res.err().unwrap());
     }
     let socket_path = socket_path_res.unwrap();
-    info!("socket path {}", socket_path);
 
     let socket = UnixSocket::new_stream()?;
 
@@ -31,8 +29,6 @@ pub async fn send_command(command: NoPortCommunication) -> Result<(), anyhow::Er
     let size = stream.read(&mut buffer).await?;
 
     let communication: NoPortCommunication = serde_json::from_slice(&buffer[..size])?;
-
-    info!("received {:?}", communication);
 
     Ok(())
 }

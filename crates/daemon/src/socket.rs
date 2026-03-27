@@ -1,9 +1,17 @@
-use std::os::unix::fs::chown;
+use std::{
+    env,
+    ffi::CString,
+    os::unix::fs::chown,
+    process::{Command, Stdio},
+};
 
-use nix::{libc::chmod, unistd::User};
+use nix::{
+    libc::chmod,
+    unistd::{Gid, User},
+};
 use noport_lib::{
     communication::{NoPortCommunication, get_socket},
-    linux::{add_user_to_group, upsert_group},
+    linux::{add_user_to_group, get_user, upsert_group},
     store::{Store, StoreEntry},
 };
 use paris::{error, info, success};
@@ -15,17 +23,59 @@ use tokio::{
 
 const GROUP_NAME: &str = "noport";
 
-fn ensure_socket_right(user: User, socket_path: &str) -> Result<(), anyhow::Error> {
-    // upsert the noport group
+fn macos_rights() -> Result<Gid, anyhow::Error> {
+    info!("Settings all the MacOS rights");
+
+    let group = format!("/Groups/{}", GROUP_NAME);
+    let user = get_user();
+    Command::new("dscl")
+        .args(vec![".", "create", &group, "PrimaryGroupID", "121212"])
+        .stderr(Stdio::inherit())
+        .status()?;
+
+    let user_name = user.name.as_str();
+    Command::new("dseditgroup")
+        .args(vec![
+            "-o", "edit", "-a", user_name, "-t", "user", GROUP_NAME,
+        ])
+        .stderr(Stdio::inherit())
+        .status()?;
+
+    Ok(Gid::from(121212))
+}
+
+fn linux_rights() -> Result<Gid, anyhow::Error> {
+    info!("Setting all the linux rights");
+
+    // !!should be done at install
     let group = upsert_group(GROUP_NAME)?;
+    let user = get_user();
     add_user_to_group(user, &group)?;
 
-    // set noport as the socket groups
-    chown(socket_path, None, Some(group.gid.as_raw()))?;
+    return Ok(group.gid);
+}
 
-    chmod(socket_path, 0o775);
+fn ensure_socket_right(socket_path: &str) -> Result<(), anyhow::Error> {
+    let gid = match env::consts::OS {
+        "macos" => macos_rights(),
+        "linux" => linux_rights(),
+        _ => {
+            return Err(anyhow::Error::msg("OS not supported"));
+        }
+    }?;
+
+    // set noport as the socket groups
+    if let Err(e) = chown(socket_path, None, Some(gid.as_raw())) {
+        error!("error while chown-ing the socket ({}): {}", socket_path, e);
+        return Err(anyhow::Error::from(e));
+    }
 
     // change the group right
+    let c_path = CString::new(socket_path).unwrap();
+    unsafe {
+        chmod(c_path.as_ptr(), 0o775);
+    }
+
     Ok(())
 }
 
@@ -34,8 +84,12 @@ pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<(),
     let socket_path = get_socket();
     let listener = UnixListener::bind(socket_path)?;
 
-    if nix::unistd::Uid::current().is_root() {
-        ensure_socket_right(socket_path);
+    let current_user = nix::unistd::Uid::current();
+    if current_user.is_root() {
+        if let Err(e) = ensure_socket_right(socket_path) {
+            error!("error while setting socket perms {}", e);
+            return Err(anyhow::Error::from(e));
+        }
     }
 
     success!("socket started (path={})", socket_path);
@@ -56,8 +110,6 @@ async fn send_ok(mut stream: UnixStream) {
     let ok = serde_json::to_string(&NoPortCommunication::Ok).unwrap();
     if let Err(e) = stream.write(ok.as_bytes()).await {
         error!("error while sending OK {}", e);
-    } else {
-        info!("OK sent");
     }
 }
 

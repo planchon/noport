@@ -1,6 +1,7 @@
 use std::process::Command;
 
-use nix::unistd::{Group, User};
+use nix::unistd::{Group, User, getuid};
+use paris::info;
 
 pub fn upsert_group(group: &str) -> Result<Group, anyhow::Error> {
     // check if the group exists
@@ -33,4 +34,12 @@ pub fn add_user_to_group(user: User, group: &Group) -> Result<(), anyhow::Error>
     }
 
     Ok(())
+}
+
+pub fn get_user() -> User {
+    let name =
+        String::from_utf8_lossy(&Command::new("logname").output().unwrap().stdout).to_string();
+    let user = User::from_name(name.trim()).unwrap();
+
+    user.unwrap()
 }
