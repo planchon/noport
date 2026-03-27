@@ -33,7 +33,8 @@ noport -- vite
 before calling `noport` ready, I would like to ship these features (this is the `v1` roadmap)
 
 - [x] socket / client communication
-- [ ] sudo management (for `port < 1024` and `/etc/hosts edits`) 
+- [x] sudo management 
+- [x] port < 1024 management (port 80)
 - [ ] custom `tld` (like `.lan`, `.home`, `.test` etc)
 - [ ] automatic sub-domain generation (based on folder, git branch, git worktree)
 - [ ] `https` support
