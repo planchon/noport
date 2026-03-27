@@ -5,7 +5,10 @@ use std::{
     process::{Command, exit},
 };
 
-use noport_lib::{communication::get_socket, store::Store};
+use noport_lib::{
+    communication::{find_socket, get_socket},
+    store::Store,
+};
 use paris::{error, info, success, warn};
 use tokio::{
     signal::{self},
@@ -15,7 +18,7 @@ use tokio::{
 use crate::status::{get_status, status};
 
 /// Start the daemon in the foreground
-pub async fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
+pub async fn start_foreground(store: Store, port: u16) -> Result<(), anyhow::Error> {
     let tld = store.get_tld();
     let (shutdown_tx, mut shutdown_rx) = channel(1);
     info!(
@@ -36,11 +39,15 @@ pub async fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
     tokio::spawn(async move {
         match shutdown_rx.recv().await {
             Some(()) => {
-                let path = get_socket();
-                info!("stopping the socket {}", path);
-                if let Err(e) = fs::remove_file(path) {
-                    error!("error while deleting the socket {}", e);
+                if let Ok(path) = find_socket() {
+                    info!("stopping the socket {}", path);
+                    if let Err(e) = fs::remove_file(path) {
+                        error!("error while deleting the socket {}", e);
+                    }
+                } else {
+                    error!("Could not find a socket to delete ??");
                 }
+
                 exit(1);
             }
             None => {
@@ -49,7 +56,8 @@ pub async fn start_foreground(store: Store) -> Result<(), anyhow::Error> {
         }
     });
 
-    let result = daemon::daemon::start_deamon(store, None, shutdown_tx).await;
+    let addr = format!("127.0.0.1:{}", port);
+    let result = daemon::daemon::start_deamon(store, addr, shutdown_tx).await;
 
     if let Err(e) = result {
         error!("Error starting the daemon: {}", e);

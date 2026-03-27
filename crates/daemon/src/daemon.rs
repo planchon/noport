@@ -14,15 +14,7 @@ use crate::{server::handle_request, socket::create_socket};
 
 type ServerBuilder = hyper::server::conn::http1::Builder;
 
-const DEFAULT_ADDR: &str = "127.0.0.1:2828";
-
-pub async fn start_deamon(
-    store: Store,
-    addr: Option<String>,
-    shutdown_tx: Sender<()>,
-) -> io::Result<()> {
-    let addr = addr.unwrap_or_else(|| DEFAULT_ADDR.to_string());
-
+pub async fn start_deamon(store: Store, addr: String, shutdown_tx: Sender<()>) -> io::Result<()> {
     let socket_store = store.clone();
 
     // run the socket (interaction between CLI and Daemon)

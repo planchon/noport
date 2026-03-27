@@ -71,8 +71,14 @@ pub async fn start_subcommand(args: Vec<String>) -> Option<ExitStatus> {
 }
 
 pub fn rerun_as_sudo() {
+    let noport = env::current_exe().unwrap().to_string_lossy().to_string();
+    let mut args = Vec::from_iter(env::args());
+    args.splice(0..1, vec![noport]);
+
+    info!("running {:?}", args);
+
     Command::new("sudo")
-        .args(env::args())
+        .args(args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())

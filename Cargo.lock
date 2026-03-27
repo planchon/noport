@@ -200,6 +200,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
+ "nix",
  "noport-lib",
  "notify",
  "paris",

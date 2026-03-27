@@ -1,4 +1,5 @@
 use std::env;
+use std::process::exit;
 
 use clap::Command;
 use clap::Parser;
@@ -12,6 +13,7 @@ use tokio::runtime::Runtime;
 
 use crate::start::start_background;
 use crate::start::start_foreground;
+use crate::subprocess::rerun_as_sudo;
 use crate::subprocess::start_subcommand;
 
 mod setup;
@@ -41,8 +43,8 @@ struct NoPort {
     app_port: Option<u16>,
 
     /// Port used by the proxy
-    #[arg(short, long)]
-    port: Option<u16>,
+    #[arg(short, long, default_value_t = 2828)]
+    port: u16,
 
     /// Use the git branch name as subdomain
     #[arg(long, default_value_t = false)]
@@ -82,8 +84,8 @@ fn need_sudo(cli: &NoPort) -> bool {
 
     if let Some(command) = &cli.command {
         match command {
-            NoPortCommand::Start { foreground, tld } => {
-                if (cli.port.is_some() && cli.app_port.unwrap() < 1024) || tld != "localhost" {
+            NoPortCommand::Start { foreground: _, tld } => {
+                if (cli.port < 1024) || tld != "localhost" {
                     return true;
                 }
                 return false;
@@ -101,7 +103,10 @@ fn need_sudo(cli: &NoPort) -> bool {
 async fn main() -> Result<(), anyhow::Error> {
     let cli = NoPort::parse();
 
-    if need_sudo(&cli) {}
+    if need_sudo(&cli) {
+        rerun_as_sudo();
+        exit(1);
+    }
 
     if let Some(command) = cli.command {
         match command {
@@ -121,7 +126,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 store.set_tld(tld)?;
 
                 if foreground {
-                    return start_foreground(store).await;
+                    return start_foreground(store, cli.port).await;
                 } else {
                     return start_background().await;
                 }

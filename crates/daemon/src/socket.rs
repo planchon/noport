@@ -1,20 +1,42 @@
-use std::io::{BufRead, Read};
+use std::os::unix::fs::chown;
 
+use nix::{libc::chmod, unistd::User};
 use noport_lib::{
     communication::{NoPortCommunication, get_socket},
+    linux::{add_user_to_group, upsert_group},
     store::{Store, StoreEntry},
 };
 use paris::{error, info, success};
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, BufReader},
+    io::{AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
     sync::mpsc::Sender,
 };
 
-/// Create the socket for the client <--> daemon communication
+const GROUP_NAME: &str = "noport";
+
+fn ensure_socket_right(user: User, socket_path: &str) -> Result<(), anyhow::Error> {
+    // upsert the noport group
+    let group = upsert_group(GROUP_NAME)?;
+    add_user_to_group(user, &group)?;
+
+    // set noport as the socket groups
+    chown(socket_path, None, Some(group.gid.as_raw()))?;
+
+    chmod(socket_path, 0o775);
+
+    // change the group right
+    Ok(())
+}
+
+/// Create the socket for the client <-> daemon communication
 pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<(), anyhow::Error> {
     let socket_path = get_socket();
     let listener = UnixListener::bind(socket_path)?;
+
+    if nix::unistd::Uid::current().is_root() {
+        ensure_socket_right(socket_path);
+    }
 
     success!("socket started (path={})", socket_path);
 

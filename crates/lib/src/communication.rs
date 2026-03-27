@@ -1,3 +1,5 @@
+use std::fs;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -23,4 +25,15 @@ pub fn get_socket<'a>() -> &'a str {
     } else {
         "/tmp/noport.socket"
     }
+}
+
+pub fn find_socket<'a>() -> Result<&'a str, anyhow::Error> {
+    if fs::exists("/tmp/noport.socket")? {
+        return Ok("/tmp/noport.socket");
+    }
+    if fs::exists("/var/run/noport.socket")? {
+        return Ok("/var/run/noport.socket");
+    }
+
+    Err(anyhow::Error::msg("Could not find a socket"))
 }
