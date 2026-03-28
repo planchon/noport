@@ -4,6 +4,10 @@ use std::{
     path::Path,
 };
 
+use paris::info;
+
+use crate::store::StoreEntry;
+
 const START: &str = "# noport start";
 const END: &str = "# noport stop";
 
@@ -48,10 +52,8 @@ fn parse_host<'a>() -> Result<HostFile, anyhow::Error> {
     });
 }
 
-pub fn write_host(new_host: String) -> Result<(), anyhow::Error> {
-    let mut host = parse_host()?;
-
-    host.user_hosts.push(new_host);
+pub fn write_host(noport_hosts: Vec<String>) -> Result<(), anyhow::Error> {
+    let host = parse_host()?;
 
     let host_path = Path::new("/etc/hosts");
 
@@ -61,10 +63,10 @@ pub fn write_host(new_host: String) -> Result<(), anyhow::Error> {
         .open(host_path)?;
 
     let new_host_file = format!(
-        "{}\n\n{}{}{}",
+        "{}\n\n{}\n{}\n{}",
         host.user_hosts.join("\n"),
         START,
-        host.noport_hosts.join("\n"),
+        noport_hosts.join("\n"),
         END
     );
 

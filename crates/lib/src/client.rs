@@ -1,10 +1,17 @@
 use paris::error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::UnixSocket,
+    net::{UnixSocket, UnixStream},
 };
 
 use crate::communication::{NoPortCommunication, find_socket};
+
+pub async fn send_ok(mut stream: UnixStream) {
+    let ok = serde_json::to_string(&NoPortCommunication::Ok).unwrap();
+    if let Err(e) = stream.write(ok.as_bytes()).await {
+        error!("error while sending OK {}", e);
+    }
+}
 
 pub async fn send_command(command: NoPortCommunication) -> Result<(), anyhow::Error> {
     let socket_path_res = find_socket();

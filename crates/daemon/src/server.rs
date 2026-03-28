@@ -65,7 +65,8 @@ pub async fn handle_request(
 
     if store_entry.is_none() {
         error!(
-            "Cannot find the store entry for the host (have you launched noport before the command?)"
+            "Cannot find the store entry for the host {} (have you launched noport before the command?)",
+            host_value
         );
         // THIS IS WRONG. we shoudl return an http error.
         return Err(anyhow::anyhow!("cannot find the store entry"));

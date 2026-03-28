@@ -1,3 +1,4 @@
+use std::fmt::format;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -8,6 +9,9 @@ use paris::info;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
+use crate::hosts::write_host;
+use crate::store;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreEntry {
     pub port: i32,
@@ -17,17 +21,15 @@ pub struct StoreEntry {
 
 #[derive(Debug, Clone)]
 pub struct Store {
-    pub inner: Arc<Mutex<Vec<StoreEntry>>>,
+    inner: Arc<Mutex<Vec<StoreEntry>>>,
+    tld: String,
 
-    host_folder: PathBuf,
     root_folder: PathBuf,
 }
 
 impl Store {
     pub fn new() -> Self {
         let home_folder = Path::new("/tmp/.noport").to_path_buf();
-
-        let host_folder = home_folder.join("hosts");
 
         if !fs::exists(&home_folder).unwrap() {
             info!(
@@ -36,14 +38,11 @@ impl Store {
             );
             fs::create_dir(&home_folder).unwrap();
         }
-        if !fs::exists(&host_folder).unwrap() {
-            fs::create_dir(&host_folder).unwrap();
-        }
 
         Self {
             inner: Arc::new(Mutex::new(Vec::new())),
             root_folder: home_folder,
-            host_folder: host_folder,
+            tld: "localhost".to_string(),
         }
     }
 
@@ -52,26 +51,37 @@ impl Store {
     }
 
     /// Set the global TLD
-    pub fn set_tld(&self, tld: String) -> Result<(), anyhow::Error> {
-        let path = Path::new(&self.root_folder).join("tld");
-        if let Err(e) = fs::write(path.clone(), tld.clone()) {
-            error!(
-                "error writing the tld (tld={}, path={}): {}",
-                tld,
-                path.to_string_lossy(),
-                e
-            );
-            return Err(anyhow::Error::new(e));
-        }
+    pub fn set_tld(&mut self, tld: String) -> Result<(), anyhow::Error> {
+        self.tld = tld;
 
         Ok(())
     }
 
     /// Get the global TLD
     pub fn get_tld(&self) -> String {
-        let path = Path::new(&self.root_folder).join("tld");
-        let content = fs::read_to_string(path).unwrap();
-        content
+        self.tld.clone()
+    }
+
+    pub async fn add_entry(&self, entry: StoreEntry) {
+        let mut inner = self.inner.lock().await;
+
+        inner.push(entry.clone());
+
+        drop(inner);
+
+        self.update_hosts().await;
+    }
+
+    async fn update_hosts(&self) {
+        let store_inner = self.inner.lock().await;
+        let hosts = store_inner
+            .iter()
+            .map(|f| format!("127.0.0.1 {}.{}", f.domain.clone(), self.get_tld()))
+            .collect();
+
+        if let Err(e) = write_host(hosts) {
+            error!("error while adding host {}", e);
+        }
     }
 
     /// Daemon land

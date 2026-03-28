@@ -10,6 +10,7 @@ use nix::{
     unistd::{Gid, User},
 };
 use noport_lib::{
+    client::send_ok,
     communication::{NoPortCommunication, get_socket},
     linux::{add_user_to_group, get_user, upsert_group},
     store::{Store, StoreEntry},
@@ -106,13 +107,6 @@ pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<(),
     Ok(())
 }
 
-async fn send_ok(mut stream: UnixStream) {
-    let ok = serde_json::to_string(&NoPortCommunication::Ok).unwrap();
-    if let Err(e) = stream.write(ok.as_bytes()).await {
-        error!("error while sending OK {}", e);
-    }
-}
-
 async fn handle_connection(
     mut stream: UnixStream,
     store: &Store,
@@ -127,19 +121,19 @@ async fn handle_connection(
 
             match communication {
                 NoPortCommunication::CreateHost { domain, port, path } => {
-                    info!("[comms] adding a host ({}, {}, {})", domain, port, path);
-                    let mut inner = store.inner.lock().await;
-                    inner.push(StoreEntry {
-                        domain: domain.clone(),
-                        port,
-                        path,
-                    });
+                    store
+                        .add_entry(StoreEntry {
+                            port,
+                            domain: domain.clone(),
+                            path: path.clone(),
+                        })
+                        .await;
                     send_ok(stream).await;
-                    info!("[comms] entry add! ({})", domain);
+                    info!("[comms] host add ({}, {}, {})", domain, port, path);
                 }
                 NoPortCommunication::Stop => {
-                    info!("[comms] stopping the daemon");
                     send_ok(stream).await;
+                    info!("[comms] stopping the daemon");
                     shutdown_tx.send(()).await.unwrap();
                 }
                 NoPortCommunication::Status => {

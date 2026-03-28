@@ -42,10 +42,6 @@ struct NoPort {
     #[arg(short, long)]
     app_port: Option<u16>,
 
-    /// Port used by the proxy
-    #[arg(short, long, default_value_t = 2828)]
-    port: u16,
-
     /// Use the git branch name as subdomain
     #[arg(long, default_value_t = false)]
     git_branch: bool,
@@ -72,6 +68,10 @@ enum NoPortCommand {
         /// all other TLDs can lead to problems
         #[arg(short, long, default_value = "localhost")]
         tld: String,
+
+        /// Port used by the proxy
+        #[arg(short, long, default_value_t = 2828)]
+        port: u16,
     },
     Stop,
     Status,
@@ -84,8 +84,12 @@ fn need_sudo(cli: &NoPort) -> bool {
 
     if let Some(command) = &cli.command {
         match command {
-            NoPortCommand::Start { foreground: _, tld } => {
-                if (cli.port < 1024) || tld != "localhost" {
+            NoPortCommand::Start {
+                foreground: _,
+                tld,
+                port,
+            } => {
+                if (*port < 1024) || tld != "localhost" {
                     return true;
                 }
                 return false;
@@ -121,12 +125,16 @@ async fn main() -> Result<(), anyhow::Error> {
             }
             // start the daemon proxy server
             // this part could run in sudo
-            NoPortCommand::Start { foreground, tld } => {
-                let store = Store::new();
+            NoPortCommand::Start {
+                foreground,
+                tld,
+                port,
+            } => {
+                let mut store = Store::new();
                 store.set_tld(tld)?;
 
                 if foreground {
-                    return start_foreground(store, cli.port).await;
+                    return start_foreground(store, port).await;
                 } else {
                     return start_background().await;
                 }
