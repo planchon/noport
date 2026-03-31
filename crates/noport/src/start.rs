@@ -5,20 +5,18 @@ use std::{
     process::{Command, exit},
 };
 
-use noport_lib::{
-    communication::{find_socket, get_socket},
-    store::Store,
-};
+use anyhow::anyhow;
+use noport_lib::{communication::find_socket, store::Store};
 use paris::{error, info, success, warn};
 use tokio::{
     signal::{self},
     sync::mpsc::channel,
 };
 
-use crate::status::{get_status, status};
+use crate::status::get_status;
 
 /// Start the daemon in the foreground
-pub async fn start_foreground(store: Store, port: u16) -> Result<(), anyhow::Error> {
+pub async fn start_foreground(store: Store, port: u16, https: bool) -> Result<(), anyhow::Error> {
     let tld = store.get_tld();
     let (shutdown_tx, mut shutdown_rx) = channel(1);
     info!(
@@ -29,7 +27,9 @@ pub async fn start_foreground(store: Store, port: u16) -> Result<(), anyhow::Err
     let shutdown_tx_clone = shutdown_tx.clone();
     tokio::spawn(async move {
         match signal::ctrl_c().await {
-            Ok(()) => shutdown_tx_clone.send(()).await.unwrap(),
+            Ok(()) => {
+                shutdown_tx_clone.send(()).await.unwrap();
+            }
             Err(e) => {
                 error!("error in the ctrl_c signal {}", e);
             }
@@ -38,7 +38,7 @@ pub async fn start_foreground(store: Store, port: u16) -> Result<(), anyhow::Err
 
     tokio::spawn(async move {
         match shutdown_rx.recv().await {
-            Some(()) => {
+            Some(_) => {
                 if let Ok(path) = find_socket() {
                     info!("stopping the socket {}", path);
                     if let Err(e) = fs::remove_file(path) {
@@ -47,21 +47,18 @@ pub async fn start_foreground(store: Store, port: u16) -> Result<(), anyhow::Err
                 } else {
                     error!("Could not find a socket to delete ??");
                 }
-
-                exit(1);
             }
             None => {
-                error!("received nothing on the shutdown channel ??");
+                error!("got None in the shutdown_rx?");
             }
         }
     });
 
     let addr = format!("127.0.0.1:{}", port);
-    let result = daemon::daemon::start_deamon(store, addr, shutdown_tx).await;
+    let result = daemon::daemon::start_deamon(store, addr, https, shutdown_tx).await;
 
     if let Err(e) = result {
-        error!("Error starting the daemon: {}", e);
-        return Ok(());
+        return Err(anyhow!("error starting the daemon {}", e));
     }
 
     Ok(())

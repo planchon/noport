@@ -1,22 +1,18 @@
-use std::env;
 use std::process::exit;
 
-use clap::Command;
 use clap::Parser;
 use clap::Subcommand;
 
+use noport_lib::cert;
 use noport_lib::store::Store;
 
-use noport_lib::setup::setup_certificate;
 use paris::success;
-use tokio::runtime::Runtime;
 
 use crate::start::start_background;
 use crate::start::start_foreground;
 use crate::subprocess::rerun_as_sudo;
 use crate::subprocess::start_subcommand;
 
-mod setup;
 mod start;
 mod status;
 mod stop;
@@ -69,12 +65,19 @@ enum NoPortCommand {
         #[arg(short, long, default_value = "localhost")]
         tld: String,
 
+        #[arg(long, default_value_t = false)]
+        https: bool,
+
         /// Port used by the proxy
         #[arg(short, long, default_value_t = 2828)]
         port: u16,
     },
     Stop,
     Status,
+    /// Setup the CA certificate for local HTTPS
+    Setup,
+    /// Trust globally on your machine the CA root certificate
+    Trust,
 }
 
 fn need_sudo(cli: &NoPort) -> bool {
@@ -86,6 +89,7 @@ fn need_sudo(cli: &NoPort) -> bool {
         match command {
             NoPortCommand::Start {
                 foreground: _,
+                https: _,
                 tld,
                 port,
             } => {
@@ -114,30 +118,32 @@ async fn main() -> Result<(), anyhow::Error> {
 
     if let Some(command) = cli.command {
         match command {
-            // NoPortCommand::Setup => {
-            //     setup_certificate();
-            // }
             NoPortCommand::Stop => {
                 return stop::stop_daemon().await;
             }
             NoPortCommand::Status => {
                 return status::status().await;
             }
-            // start the daemon proxy server
-            // this part could run in sudo
             NoPortCommand::Start {
                 foreground,
                 tld,
                 port,
+                https,
             } => {
                 let mut store = Store::new();
                 store.set_tld(tld)?;
 
                 if foreground {
-                    return start_foreground(store, port).await;
+                    return start_foreground(store, port, https).await;
                 } else {
                     return start_background().await;
                 }
+            }
+            NoPortCommand::Setup => {
+                cert::setup_ca()?;
+            }
+            NoPortCommand::Trust => {
+                cert::trust_certificate()?;
             }
         }
     }

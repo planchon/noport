@@ -1,3 +1,4 @@
+pub mod cert;
 pub mod client;
 pub mod communication;
 pub mod domain;
