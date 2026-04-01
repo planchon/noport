@@ -16,12 +16,21 @@ use tokio::{
 use crate::status::get_status;
 
 /// Start the daemon in the foreground
-pub async fn start_foreground(store: Store, port: u16, https: bool) -> Result<(), anyhow::Error> {
+pub async fn start_foreground(
+    store: Store,
+    mut port: u16,
+    https: bool,
+) -> Result<(), anyhow::Error> {
+    if https && port != 443 {
+        warn!("You can only use port 443 with HTTPS");
+        port = 443;
+    }
+
     let tld = store.get_tld();
     let (shutdown_tx, mut shutdown_rx) = channel(1);
     info!(
         "Starting the daemon proxy server (port={}, tld={})",
-        "2828", tld
+        port, tld
     );
 
     let shutdown_tx_clone = shutdown_tx.clone();

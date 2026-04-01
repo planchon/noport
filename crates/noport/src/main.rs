@@ -89,11 +89,11 @@ fn need_sudo(cli: &NoPort) -> bool {
         match command {
             NoPortCommand::Start {
                 foreground: _,
-                https: _,
+                https,
                 tld,
                 port,
             } => {
-                if (*port < 1024) || tld != "localhost" {
+                if (*port < 1024) || tld != "localhost" || *https {
                     return true;
                 }
                 return false;
