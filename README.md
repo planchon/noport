@@ -62,6 +62,16 @@ before calling `noport` ready, I would like to ship these features (this is the 
 - [x] `https` and `wss` support
 - [ ] automatic sub-domain generation (based on folder, git branch, git worktree)
 - [ ] support famous frameworks (vite, next, nest, ...)
+- [ ] CI / Release process
+- [ ] Usage doc and Architecture doc
+
+### To improve (not for the v1, for later)
+- [ ] Better error boundary between proxy and daemon
+- [ ] Stop buffering the request in the proxy -> stream them
+- [ ] Async openssl operations 
+- [ ] Cleanup lifecycle (socket, hosts)
+- [ ] Default pages (no proxy found, error in the proxy)
+- [ ] Better OS handling in the code, have a clean architecture
 
 ## Install
 The software is not installable yet. will be soon (when the roadmap of the v1 is finished)
