@@ -1,12 +1,19 @@
 use anyhow::anyhow;
-use hyper::{Response, StatusCode, upgrade::OnUpgrade};
+use http_body_util::{BodyExt, Full};
+use hyper::{
+    Response, StatusCode,
+    body::{Body, Bytes},
+    header,
+    upgrade::OnUpgrade,
+};
 
 use hyper_util::rt::TokioIo;
 use noport_lib::store::Store;
-use paris::{error, info};
+use paris::{error, info, warn};
 use tokio::net::TcpStream;
 
 type ClientBuilder = hyper::client::conn::http1::Builder;
+type BoxBody = http_body_util::combinators::BoxBody<Bytes, hyper::Error>;
 
 fn extract_host(req: &hyper::Request<hyper::body::Incoming>) -> Option<String> {
     // http uri
@@ -56,17 +63,25 @@ async fn tunnel(client: OnUpgrade, server: OnUpgrade) -> Result<(), Box<dyn std:
     Ok(())
 }
 
+fn full<T: Into<Bytes>>(chunk: T) -> BoxBody {
+    Full::new(chunk.into())
+        .map_err(|never| match never {})
+        .boxed()
+}
+
 pub async fn handle_request(
     mut req: hyper::Request<hyper::body::Incoming>,
     store: Store,
-) -> Result<Response<hyper::body::Incoming>, anyhow::Error> {
+) -> Result<Response<BoxBody>, anyhow::Error> {
     let host = extract_host(&req);
 
     if host.is_none() {
         error!("Cannot find the host name");
 
-        // THIS IS WRONG. we shoudl return an http error.
-        return Err(anyhow::anyhow!("cannot find the host"));
+        return Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(full(format!("Could not find the host name")))
+            .expect("?"));
     }
 
     let host_value = host.unwrap().clone();
@@ -103,11 +118,9 @@ pub async fn handle_request(
         .handshake(io)
         .await?;
 
-    let conn = conn.with_upgrades();
-
     tokio::task::spawn(async move {
-        if let Err(e) = conn.await {
-            error!("Error while connecting {}", e);
+        if let Err(e) = conn.with_upgrades().await {
+            error!("Connection upgrade failed {}", e);
         }
     });
 
@@ -123,11 +136,22 @@ pub async fn handle_request(
                 }
             });
 
-            Ok(resp)
+            let bytes = resp.collect().await?.to_bytes();
+            let response = Response::builder().status(101).body(full(bytes))?;
+
+            Ok(response)
         } else {
-            Err(anyhow!("should not be possible"))
+            warn!("no upgrade while switching protocol ?");
+            Ok(Response::builder()
+                .status(StatusCode::BAD_GATEWAY)
+                .body(full(""))?)
         }
     } else {
-        Ok(resp)
+        let header = resp.headers().clone();
+        let bytes = resp.collect().await?.to_bytes();
+        let mut response = Response::builder().body(full(bytes))?;
+        response.headers_mut().extend(header);
+
+        Ok(response)
     }
 }
