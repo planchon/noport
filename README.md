@@ -13,21 +13,44 @@ Add noport before your app, we will infer a cool, fixed subdomain, using HTTPS :
 # Served on http://localhost:5173
 vite        
 
-# Served on http://myapp.local:2828
+# Served on https://myapp.localhost 
 noport -- vite 
 ```
 
 > [!NOTE]
 > NoPort daemon can run non-root, but need to run as root if you want to use `port < 1024` or use a TLD different than `.localhost`. 
 
-### Commands
+### Launching the daemon
+The daemon is the process serving all the proxy requests from your browser to the child process.
+
+```bash
+# Start the daemon and change the TLD to .lan 
+noport start --tld lan
+
+# Start the daemon and change the port to 8080
+noport start --port 8080
+
+# Start the daemon in the foreground  
+noport start --foreground
+```
+
+## Commands
 
 - `noport -- anything` to start a process through noport 
-- `noport start` to start the daemon (and the proxy)
+- `noport start` to start the daemon 
+- `noport setup` generate the CA root certificate (and put it in `~/.noport/certs/ca.pem`) 
+- `noport trust` trust the CA root certificate (requires `sudo`)
 
-#### Other commands
-- `noport stop` to stop the daemon
-- `noport status` to get the status of daemon
+### Arguments
+Before the `--` argument, you can use the following arguments:
+- `--domain` to change the subdomain used by the proxy
+- `--app-port` to change the port of the child process (your app)
+
+For the **start** command:
+- `--foreground` to run the daemon in the foreground
+- `--port` to change the port used by the proxy
+- `--tld` to change the TLD (default is `.localhost`) (requires `sudo`)
+- `--https` to use HTTPS (default is HTTP) (requires `sudo`)
 
 ## Roadmap
 before calling `noport` ready, I would like to ship these features (this is the `v1` roadmap)
@@ -36,8 +59,8 @@ before calling `noport` ready, I would like to ship these features (this is the 
 - [x] sudo management 
 - [x] port < 1024 management (port 80)
 - [x] custom `tld` (like `.lan`, `.home`, `.test` etc)
+- [x] `https` and `wss` support
 - [ ] automatic sub-domain generation (based on folder, git branch, git worktree)
-- [ ] `https` support
 - [ ] support famous frameworks (vite, next, nest, ...)
 
 ## Install
