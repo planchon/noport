@@ -37,15 +37,6 @@ fn extract_host(req: &hyper::Request<hyper::body::Incoming>) -> Option<String> {
     None
 }
 
-// async fn tunnel(upgraded: Upgraded, addr: String) -> io::Result<()> {
-//     let mut server = TcpStream::connect(addr).await?;
-//     let mut upgraded = TokioIo::new(upgraded);
-
-//     tokio::io::copy_bidirectional(&mut upgraded, &mut server).await?;
-
-//     Ok(())
-// }
-
 async fn tunnel(client: OnUpgrade, server: OnUpgrade) -> Result<(), Box<dyn std::error::Error>> {
     let (client_upgraded, server_upgraded) = tokio::try_join!(client, server)?;
 
@@ -124,7 +115,10 @@ pub async fn handle_request(
         }
     });
 
-    let resp = sender.send_request(req).await?;
+    let resp = sender.send_request(req).await.map_err(|e| {
+        error!("Error while sending the request to the server {}", e);
+        e
+    })?;
 
     if resp.status() == StatusCode::SWITCHING_PROTOCOLS {
         if let Some(client_on_upgrade) = client_upgrade {
@@ -132,7 +126,7 @@ pub async fn handle_request(
 
             tokio::spawn(async move {
                 if let Err(e) = tunnel(client_on_upgrade, server_on_upgrade).await {
-                    error!("Upgrade tunnel error {}", e);
+                    error!("Upgrade tunnel error (error={})", e);
                 }
             });
 
