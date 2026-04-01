@@ -1,18 +1,11 @@
-use anyhow::anyhow;
 use http_body_util::{BodyExt, Full};
-use hyper::{
-    Response, StatusCode,
-    body::{Body, Bytes},
-    header,
-    upgrade::OnUpgrade,
-};
+use hyper::{Response, StatusCode, body::Bytes, upgrade::OnUpgrade};
 
 use hyper_util::rt::TokioIo;
 use noport_lib::store::Store;
 use paris::{error, info, warn};
 use tokio::net::TcpStream;
 
-type ClientBuilder = hyper::client::conn::http1::Builder;
 type BoxBody = http_body_util::combinators::BoxBody<Bytes, hyper::Error>;
 
 fn extract_host(req: &hyper::Request<hyper::body::Incoming>) -> Option<String> {
@@ -130,8 +123,12 @@ pub async fn handle_request(
                 }
             });
 
-            let bytes = resp.collect().await?.to_bytes();
-            let response = Response::builder().status(101).body(full(bytes))?;
+            let (parts, body) = resp.into_parts();
+            let bytes = body.collect().await?.to_bytes();
+            let mut response = Response::builder()
+                .status(StatusCode::SWITCHING_PROTOCOLS)
+                .body(full(bytes))?;
+            *response.headers_mut() = parts.headers;
 
             Ok(response)
         } else {
