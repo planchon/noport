@@ -47,6 +47,8 @@ pub async fn start_foreground(store: Store, port: u16, https: bool) -> Result<()
                 } else {
                     error!("Could not find a socket to delete ??");
                 }
+
+                exit(0);
             }
             None => {
                 error!("got None in the shutdown_rx?");

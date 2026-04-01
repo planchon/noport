@@ -1,11 +1,9 @@
-use std::io;
-
-use http_body_util::{BodyExt, Empty, combinators::BoxBody};
-use hyper::{Method, Response, body::Bytes, upgrade::Upgraded};
+use anyhow::anyhow;
+use hyper::{Response, StatusCode, upgrade::OnUpgrade};
 
 use hyper_util::rt::TokioIo;
 use noport_lib::store::Store;
-use paris::error;
+use paris::{error, info};
 use tokio::net::TcpStream;
 
 type ClientBuilder = hyper::client::conn::http1::Builder;
@@ -32,25 +30,36 @@ fn extract_host(req: &hyper::Request<hyper::body::Incoming>) -> Option<String> {
     None
 }
 
-fn empty() -> BoxBody<Bytes, hyper::Error> {
-    Empty::<Bytes>::new()
-        .map_err(|never| match never {})
-        .boxed()
-}
+// async fn tunnel(upgraded: Upgraded, addr: String) -> io::Result<()> {
+//     let mut server = TcpStream::connect(addr).await?;
+//     let mut upgraded = TokioIo::new(upgraded);
 
-async fn tunnel(upgraded: Upgraded, addr: String) -> io::Result<()> {
-    let mut server = TcpStream::connect(addr).await?;
-    let mut upgraded = TokioIo::new(upgraded);
+//     tokio::io::copy_bidirectional(&mut upgraded, &mut server).await?;
 
-    tokio::io::copy_bidirectional(&mut upgraded, &mut server).await?;
+//     Ok(())
+// }
+
+async fn tunnel(client: OnUpgrade, server: OnUpgrade) -> Result<(), Box<dyn std::error::Error>> {
+    let (client_upgraded, server_upgraded) = tokio::try_join!(client, server)?;
+
+    let mut client_io = TokioIo::new(client_upgraded);
+    let mut server_io = TokioIo::new(server_upgraded);
+
+    let (from_client, from_server) =
+        tokio::io::copy_bidirectional(&mut client_io, &mut server_io).await?;
+
+    info!(
+        "Tunnel closed, received {}b, sent {}b",
+        from_client, from_server
+    );
 
     Ok(())
 }
 
 pub async fn handle_request(
-    req: hyper::Request<hyper::body::Incoming>,
+    mut req: hyper::Request<hyper::body::Incoming>,
     store: Store,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>, anyhow::Error> {
+) -> Result<Response<hyper::body::Incoming>, anyhow::Error> {
     let host = extract_host(&req);
 
     if host.is_none() {
@@ -72,29 +81,14 @@ pub async fn handle_request(
         return Err(anyhow::anyhow!("cannot find the store entry"));
     }
 
-    let port = store_entry.unwrap().port;
-    let addr = format!("127.0.0.1:{}", port);
-    let method = req.method();
-
-    // log!("Connecting to {} (host={})", port, host_value);
-
-    // bi directionnal tunnel for websocket and that stuffs
-    if method == Method::CONNECT || req.headers().contains_key("Upgrade") {
-        tokio::task::spawn(async move {
-            match hyper::upgrade::on(req).await {
-                Ok(upgraded) => {
-                    if let Err(e) = tunnel(upgraded, addr).await {
-                        error!("Server IO error {}", e);
-                    }
-                }
-                Err(e) => {
-                    error!("Socket upgrade error {}", e);
-                }
-            }
-        });
-
-        return Ok(Response::new(empty()));
+    let mut client_upgrade = None;
+    if req.headers().contains_key("Upgrade") {
+        if let Some(on_upgrade) = req.extensions_mut().remove::<OnUpgrade>() {
+            client_upgrade = Some(on_upgrade);
+        }
     }
+
+    let port = store_entry.unwrap().port;
 
     // everything else is a normal connection
     let stream = TcpStream::connect(("127.0.0.1", port as u16))
@@ -102,11 +96,14 @@ pub async fn handle_request(
         .unwrap();
     let io = TokioIo::new(stream);
 
-    let (mut sender, conn) = ClientBuilder::new()
+    // forward the request to the server
+    let (mut sender, conn) = hyper::client::conn::http1::Builder::new()
         .preserve_header_case(true)
         .title_case_headers(true)
         .handshake(io)
         .await?;
+
+    let conn = conn.with_upgrades();
 
     tokio::task::spawn(async move {
         if let Err(e) = conn.await {
@@ -116,5 +113,21 @@ pub async fn handle_request(
 
     let resp = sender.send_request(req).await?;
 
-    Ok(resp.map(|b| b.boxed()))
+    if resp.status() == StatusCode::SWITCHING_PROTOCOLS {
+        if let Some(client_on_upgrade) = client_upgrade {
+            let server_on_upgrade = resp.extensions().get::<OnUpgrade>().cloned().unwrap();
+
+            tokio::spawn(async move {
+                if let Err(e) = tunnel(client_on_upgrade, server_on_upgrade).await {
+                    error!("Upgrade tunnel error {}", e);
+                }
+            });
+
+            Ok(resp)
+        } else {
+            Err(anyhow!("should not be possible"))
+        }
+    } else {
+        Ok(resp)
+    }
 }
