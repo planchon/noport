@@ -1,0 +1,93 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "NoPort",
+  "colors": {
+    "dark": "#5E0006",
+    "light": "#9B0F06",
+    "primary": "#D53E0F"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "index",
+              "installation"
+            ]
+          },
+          {
+            "group": "Usage",
+            "pages": [
+              "usage/running",
+              "usage/daemon",
+              "usage/tls"
+            ]
+          },
+          {
+            "group": "Supported frameworks",
+            "pages": [
+              "framework/vite"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Code architecture",
+        "groups": [
+          {
+            "group": "General architecture",
+            "pages": [
+            ]
+          },
+          {
+            "group": "TLS termination",
+            "pages": [
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": []
+    }
+  },
+  "logo": {
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Need help?",
+        "href": "mailto:paul@planchon.io"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "label": "NoPort repo",
+      "href": "https://github.com/planchon/noport"
+    }
+  },
+  "contextual": {
+    "options": [
+     "copy",
+     "view",
+     "chatgpt",
+     "claude",
+     "perplexity",
+     "mcp",
+     "cursor",
+     "vscode"
+   ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/planchon/noport"
+    }
+  }
+}

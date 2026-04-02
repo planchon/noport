@@ -1,0 +1,22 @@
+---
+title: "Installation"
+description: "Install NoPort on your machine"
+---
+
+## Installation 
+
+To install `noport` you just need to run the following command:
+
+```bash
+curl -fsSL https://get.noport.dev | sh
+```
+
+## From source
+
+To build noport from source, you need to have installed all the rust toolchain.
+
+```bash
+git clone https://github.com/planchon/noport
+cargo build --release
+cp target/release/noport /usr/local/bin
+```

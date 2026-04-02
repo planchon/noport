@@ -1,0 +1,50 @@
+---
+title: "Why using NoPort ?"
+description: "NoPort will help you remove all the ports from your system."
+---
+
+## AI workflows
+
+NoPort is perfect when you want to run your application multiple times on your machine. Multiple agents, multiple worktrees, multiple instances of the same app.
+NoPort will detect the git worktree, or the git branch and serve your application on the right subdomain.
+
+If you run 5 instances of your app in 5 differents worktrees, noport will give you 5 differents subdomains.
+ - worktree `worktree_1` -> `https://app.worktree_1.localhost`
+ - worktree `worktree_2` -> `https://app.worktree_2.localhost`
+ - worktree `worktree_3` -> `https://app.worktree_3.localhost`
+
+## Memorizing ports 
+
+Remembering ports is a pain. You have to remember the port of your app, the port of the proxy, the port of the daemon, etc.
+ - `3000` for the admin frontend -> `https://admin.localhost`
+ - `3001` for the api -> `https://api.localhost`
+ - `3002` for the user frontend -> `https://user.localhost`
+
+## Local development
+
+Handling multiple ports is a pain : `http://localhost:3000` for admin frontend, `http://localhost:3001` for the backend, `http://localhost:3002` for user frontend, etc.
+This is not developer friendly, and it's not the best practice : you share the same host, so all the cookies, etc are shared.
+
+## TLS termination
+
+Better parity with production: HTTPS on local mirrors real-world HTTPS behavior, headers, cookies (Secure flag), and browser policies.
+
+## Installation 
+
+To install `noport` you just need to run the following command:
+
+```bash
+curl -fsSL https://get.noport.dev | sh
+```
+
+## Usage 
+
+`noport` is simple to use. Before any command, add `noport --`.
+
+For example, in your `package.json` file, you can add the following script:
+```diff
+- "dev": "vite"        # http://localhost:5173
++ "dev": "noport vite" # https://app.local
+```
+
+This will start your app on `http://127.0.0.1:{PORT}` (PORT is randomly generated) and serve it on `https://app.local`.

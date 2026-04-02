@@ -1,0 +1,30 @@
+---
+title: "Basic usage of noport"
+description: "How to run your app through noport"
+---
+
+## Running your app
+
+`noport` need to be launched before any command you want to run through noport.
+
+```bash
+noport -- npx vite
+```
+
+Everything after the `--` will be passed to the child process. All the arguments will be forwarded to the child process.
+
+### Environments variables
+
+`noport` will had the following environment variables:
+
+- `HOST` the host where the app will be run on
+- `PORT` the port your app will use
+
+## Arguments
+
+You can customize the behavior of `noport` by passing arguments to the `noport` command (before `--`).
+
+| Flags | Description |
+| :----------- | :------------ | 
+| ``--domain`` | The domain used by the proxy |
+| ``--app-port`` | The port of the child process (your app) |

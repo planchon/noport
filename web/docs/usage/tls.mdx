@@ -1,0 +1,25 @@
+---
+title: "TLS configuration"
+description: "Running the proxy on `https` and `wss`"
+---
+
+You can run the proxy using TLS and using a HTTP2 server. To do so, you need to generate and trust a root CA certificate. 
+
+<Note>
+You can run the proxy without TLS, but you will not be able to use HTTP2 server.
+</Note>
+
+## Required tools
+To generate and trust a root CA certificate we need `openssl` and `sudo`.
+
+## Commands
+
+### `setup` the certificate
+Generate a root CA certificate and put it in `~/.noport/certs/ca.pem` (private key is generated in the same directory).
+
+### `trust` the CA root certificate
+Trust the CA root certificate (requires `sudo`).
+
+<Warning>
+If you do not trust the CA root certificate, you will not be able to run the proxy using TLS.
+</Warning>

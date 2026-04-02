@@ -1,0 +1,16 @@
+---
+title: "Vite"
+description: "Run your Vite app through noport"
+---
+
+<Note>
+`noport` will automatically detect the `vite` framework when you run your app through `noport`.
+</Note>
+
+When you run your `vite` app through `noport`, we will automatically injects the folowing configuration:
+
+```bash
+--host 127.0.0.1 --port RANDOM_PORT
+```
+
+Your app will be served on `http://127.0.0.1:{RANDOM_PORT}` internally. You will access your app through the described URL.  

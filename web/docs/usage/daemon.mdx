@@ -1,0 +1,23 @@
+---
+title: "Daemon management"
+description: "Configuring `noport` daemon to better configure your experience"
+---
+
+<Note>
+If you run the `noport` command without a daemon running, it will start one for you.
+</Note>
+
+## Proxy configuration
+### `start` the daemon
+Start the daemon and customize the proxy behavior.
+
+| Flags | Description | Default value |
+| :----------- | :------------ | :------------ |
+| ``--foreground`` | Start the daemon in the foreground | false |
+| ``--port`` | Change the port the proxy will listen on | 2828 |
+| ``--tld`` | Change the TLD | .localhost |
+| ``--https`` | Enable HTTPS proxy and HTTP2 server | false |
+
+### `stop` the daemon
+Stop the proxy and the daemon.
+
