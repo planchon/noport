@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://noport.dev">
     <img src="https://github.com/planchon/noport/blob/main/web/docs/logo/dark.png?raw=true" height="96">
-    <h3 align="center">remove all the port from your life</h3>
+    <h4 align="center">remove all the port from your life</h4>
   </a>
 </p>
 
