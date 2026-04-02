@@ -5,7 +5,6 @@
   </a>
 </p>
 <br />
-<br />
 
 ```diff
 - "dev": "vite"        # http://localhost:5173
