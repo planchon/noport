@@ -12,6 +12,10 @@ Remove all the port from your life
 + "dev": "noport vite" # https://app.local
 ```
 
+## Documentation
+
+Read the documentation at [docs.noport.dev](https://docs.noport.dev)
+
 ## Usage
 Add noport before your app, we will infer a cool, fixed subdomain, using HTTPS : 
 
