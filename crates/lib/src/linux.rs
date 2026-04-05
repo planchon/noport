@@ -1,7 +1,17 @@
-use std::process::Command;
+use std::{env, path::PathBuf, process::Command};
 
-use nix::unistd::{Group, User, getuid};
-use paris::info;
+use nix::unistd::{Group, User};
+
+/// Get the home folder of the user
+/// Panic if no home folder is set (is it really possible ?)
+pub fn get_home() -> PathBuf {
+    let home = env::home_dir();
+    if home.is_none() {
+        panic!("Could not find your home directory.")
+    } else {
+        home.unwrap()
+    }
+}
 
 pub fn upsert_group(group: &str) -> Result<Group, anyhow::Error> {
     // check if the group exists

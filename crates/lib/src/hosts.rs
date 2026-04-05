@@ -4,16 +4,11 @@ use std::{
     path::Path,
 };
 
-use paris::info;
-
-use crate::store::StoreEntry;
-
 const START: &str = "# noport start";
 const END: &str = "# noport stop";
 
 struct HostFile {
     user_hosts: Vec<String>,
-    noport_hosts: Vec<String>,
 }
 
 /// Remove all the noport related hosts
@@ -48,7 +43,6 @@ fn parse_host<'a>() -> Result<HostFile, anyhow::Error> {
 
     return Ok(HostFile {
         user_hosts: file_acc,
-        noport_hosts: noport_lines,
     });
 }
 

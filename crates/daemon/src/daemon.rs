@@ -1,8 +1,7 @@
-use std::{env::home_dir, fs::exists, sync::Arc};
+use std::{fs::exists, sync::Arc};
 
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
-use paris::{error, info, success};
 use rustls::{
     ServerConfig,
     crypto::aws_lc_rs::sign::any_supported_type,
@@ -11,8 +10,9 @@ use rustls::{
     sign::CertifiedKey,
 };
 use tokio::{net::TcpListener, sync::mpsc::Sender};
+use tracing::{error, info};
 
-use noport_lib::{cert::generate_certificate_for_host, store::Store};
+use noport_lib::{cert::generate_certificate_for_host, linux::get_home, store::Store};
 use tokio_rustls::TlsAcceptor;
 
 use crate::{server::handle_request, socket::create_socket};
@@ -29,7 +29,7 @@ impl ResolvesServerCert for NoPortCertResolver {
     ) -> Option<Arc<rustls::sign::CertifiedKey>> {
         match client_hello.server_name() {
             Some(sni) => {
-                let base_cert_folder = home_dir().unwrap().join(".noport/certs");
+                let base_cert_folder = get_home().join(".noport/certs");
 
                 let cert_file = base_cert_folder
                     .clone()
@@ -78,7 +78,7 @@ pub async fn start_deamon(
 
     let listener = TcpListener::bind(&addr).await?;
 
-    success!("Starting the reverse proxy (addr={})", addr);
+    info!("Starting the reverse proxy (addr={})", addr);
 
     let tls_config = match https {
         false => None,

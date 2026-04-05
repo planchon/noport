@@ -5,22 +5,19 @@ use std::{
     process::{Command, exit},
 };
 
+use anyhow::Result;
 use anyhow::anyhow;
-use noport_lib::{communication::find_socket, store::Store};
-use paris::{error, info, success, warn};
+use noport_lib::{communication::find_socket, linux::get_home, store::Store};
 use tokio::{
     signal::{self},
     sync::mpsc::channel,
 };
+use tracing::{error, info, warn};
 
 use crate::status::get_status;
 
 /// Start the daemon in the foreground
-pub async fn start_foreground(
-    store: Store,
-    mut port: u16,
-    https: bool,
-) -> Result<(), anyhow::Error> {
+pub async fn start_foreground(store: Store, mut port: u16, https: bool) -> Result<()> {
     if https && port != 443 {
         warn!("You can only use port 443 with HTTPS");
         port = 443;
@@ -39,9 +36,7 @@ pub async fn start_foreground(
             Ok(()) => {
                 shutdown_tx_clone.send(()).await.unwrap();
             }
-            Err(e) => {
-                error!("error in the ctrl_c signal {}", e);
-            }
+            Err(e) => error!("error in the ctrl c {}", e),
         }
     });
 
@@ -78,7 +73,7 @@ pub async fn start_foreground(
 /// Start the daemon in the background
 /// Will not launch another daemon if one is already running
 /// Stores the process id in the store (in ~/.noport/daemon.pid)
-pub async fn start_background() -> Result<(), anyhow::Error> {
+pub async fn start_background() -> Result<()> {
     if let Ok(()) = get_status().await {
         warn!("Daemon already running");
         exit(1);
@@ -87,7 +82,7 @@ pub async fn start_background() -> Result<(), anyhow::Error> {
     let exe_path = env::current_exe()?;
 
     // print the stdout and stderr to a file
-    let home_dir = env::home_dir().unwrap();
+    let home_dir = get_home();
     let root_folder = home_dir.join(".noport");
     let log_path = Path::new(&root_folder).join("daemon.log");
     let error_path = Path::new(&root_folder).join("daemon.error");
@@ -110,7 +105,7 @@ pub async fn start_background() -> Result<(), anyhow::Error> {
 
     let pid = child.id();
 
-    success!("Daemon running on {} (PID: {})", ":2828", pid.to_string());
+    info!("Daemon running on {} (PID: {})", ":2828", pid.to_string());
 
     Ok(())
 }

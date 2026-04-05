@@ -1,12 +1,12 @@
 use std::process::exit;
 
+use anyhow::Result;
 use clap::Parser;
 use clap::Subcommand;
 
 use noport_lib::cert;
 use noport_lib::store::Store;
-
-use paris::success;
+use tracing::info;
 
 use crate::start::start_background;
 use crate::start::start_foreground;
@@ -72,7 +72,9 @@ enum NoPortCommand {
         #[arg(short, long, default_value_t = 2828)]
         port: u16,
     },
+    /// Stop the daemon
     Stop,
+    /// Status of the daemon
     Status,
     /// Setup the CA certificate for local HTTPS
     Setup,
@@ -108,7 +110,7 @@ fn need_sudo(cli: &NoPort) -> bool {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn run() -> Result<()> {
     let cli = NoPort::parse();
 
     if need_sudo(&cli) {
@@ -149,10 +151,15 @@ async fn main() -> Result<(), anyhow::Error> {
     }
 
     if !cli.child_args.is_empty() {
-        success!("Starting the child process ({})", cli.child_args.join(" "));
+        info!("Starting the child process ({})", cli.child_args.join(" "));
 
         start_subcommand(cli.child_args).await;
     }
 
     Ok(())
+}
+
+pub fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+    run()
 }

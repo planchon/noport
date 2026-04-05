@@ -1,16 +1,14 @@
-use std::fmt::format;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use paris::error;
-use paris::info;
+use nix::unistd::Uid;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
+use tracing::{error, info};
 
 use crate::hosts::write_host;
-use crate::store;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreEntry {
@@ -69,7 +67,9 @@ impl Store {
 
         drop(inner);
 
-        self.update_hosts().await;
+        if Uid::current().is_root() {
+            self.update_hosts().await;
+        }
     }
 
     async fn update_hosts(&self) {

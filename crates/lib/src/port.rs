@@ -29,6 +29,7 @@ fn generate_random_port() -> i32 {
     rng.random_range(10000..19999)
 }
 
+/// Check if a port is free by trying to connect to it
 async fn port_is_free(port: i32) -> bool {
     let socket = format!("127.0.0.1:{}", port);
     let stream = TcpStream::connect(socket);

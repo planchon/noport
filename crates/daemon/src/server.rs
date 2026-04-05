@@ -3,8 +3,8 @@ use hyper::{Response, StatusCode, body::Bytes, upgrade::OnUpgrade};
 
 use hyper_util::rt::TokioIo;
 use noport_lib::store::Store;
-use paris::{error, info, warn};
 use tokio::net::TcpStream;
+use tracing::{error, info, warn};
 
 type BoxBody = http_body_util::combinators::BoxBody<Bytes, hyper::Error>;
 

@@ -5,26 +5,24 @@ use std::{
     process::{Command, Stdio},
 };
 
-use nix::{
-    libc::chmod,
-    unistd::{Gid, User},
-};
+use anyhow::{Result, anyhow};
+use nix::{libc::chmod, unistd::Gid};
 use noport_lib::{
     client::send_ok,
     communication::{NoPortCommunication, get_socket},
     linux::{add_user_to_group, get_user, upsert_group},
     store::{Store, StoreEntry},
 };
-use paris::{error, info, success};
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::AsyncReadExt,
     net::{UnixListener, UnixStream},
     sync::mpsc::Sender,
 };
+use tracing::{debug, error, info};
 
 const GROUP_NAME: &str = "noport";
 
-fn macos_rights() -> Result<Gid, anyhow::Error> {
+fn macos_rights() -> Result<Gid> {
     info!("Settings all the MacOS rights");
 
     let group = format!("/Groups/{}", GROUP_NAME);
@@ -45,7 +43,7 @@ fn macos_rights() -> Result<Gid, anyhow::Error> {
     Ok(Gid::from(121212))
 }
 
-fn linux_rights() -> Result<Gid, anyhow::Error> {
+fn linux_rights() -> Result<Gid> {
     info!("Setting all the linux rights");
 
     // !!should be done at install
@@ -56,7 +54,7 @@ fn linux_rights() -> Result<Gid, anyhow::Error> {
     return Ok(group.gid);
 }
 
-fn ensure_socket_right(socket_path: &str) -> Result<(), anyhow::Error> {
+fn ensure_socket_right(socket_path: &str) -> Result<()> {
     let gid = match env::consts::OS {
         "macos" => macos_rights(),
         "linux" => linux_rights(),
@@ -81,7 +79,7 @@ fn ensure_socket_right(socket_path: &str) -> Result<(), anyhow::Error> {
 }
 
 /// Create the socket for the client <-> daemon communication
-pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<(), anyhow::Error> {
+pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<()> {
     let socket_path = get_socket();
     let listener = UnixListener::bind(socket_path)?;
 
@@ -89,18 +87,20 @@ pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<(),
     if current_user.is_root() {
         if let Err(e) = ensure_socket_right(socket_path) {
             error!("error while setting socket perms {}", e);
-            return Err(anyhow::Error::from(e));
+            return Err(anyhow!(e));
         }
     }
 
-    success!("socket started (path={})", socket_path);
+    info!("socket started (path={})", socket_path);
 
-    while let Ok((mut stream, _)) = listener.accept().await {
+    while let Ok((stream, _)) = listener.accept().await {
         let store_clone = store.clone();
         let shutdown_clone = shutdown_tx.clone();
 
         tokio::spawn(async move {
-            handle_connection(stream, &store_clone, shutdown_clone).await;
+            if let Err(e) = handle_connection(stream, &store_clone, shutdown_clone).await {
+                error!("Error while handling the connection {}", e);
+            };
         });
     }
 
@@ -111,7 +111,7 @@ async fn handle_connection(
     mut stream: UnixStream,
     store: &Store,
     shutdown_tx: Sender<()>,
-) -> Result<(), anyhow::Error> {
+) -> Result<()> {
     let mut buffer = [0; 1024];
 
     match stream.read(&mut buffer).await {
@@ -129,19 +129,19 @@ async fn handle_connection(
                         })
                         .await;
                     send_ok(stream).await;
-                    info!("[comms] host add ({}, {}, {})", domain, port, path);
+                    debug!("[comms] host add ({}, {}, {})", domain, port, path);
                 }
                 NoPortCommunication::Stop => {
                     send_ok(stream).await;
-                    info!("[comms] stopping the daemon");
+                    debug!("[comms] stopping the daemon");
                     shutdown_tx.send(()).await.unwrap();
                 }
                 NoPortCommunication::Status => {
-                    info!("[comms] getting status");
+                    debug!("[comms] getting tatus");
                     send_ok(stream).await;
                 }
                 NoPortCommunication::RemoveHost { domain } => {
-                    info!("[comms] removing a host ({})", domain);
+                    debug!("[comms] removing a host ({})", domain);
                 }
                 NoPortCommunication::Ok => {}
             }

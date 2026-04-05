@@ -1,8 +1,8 @@
-use paris::error;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::AsyncWriteExt,
     net::{UnixSocket, UnixStream},
 };
+use tracing::error;
 
 use crate::communication::{NoPortCommunication, find_socket};
 
@@ -32,10 +32,9 @@ pub async fn send_command(command: NoPortCommunication) -> Result<(), anyhow::Er
     stream.write(bytes.as_bytes()).await?;
 
     // wait for the response
-    let mut buffer = [0; 1024];
-    let size = stream.read(&mut buffer).await?;
-
-    let communication: NoPortCommunication = serde_json::from_slice(&buffer[..size])?;
+    // let mut buffer = [0; 1024];
+    // let size = stream.read(&mut buffer).await?;
+    // let communication: NoPortCommunication = serde_json::from_slice(&buffer[..size])?;
 
     Ok(())
 }

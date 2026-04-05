@@ -1,6 +1,5 @@
 use std::{
-    env::{self, home_dir},
-    fmt::format,
+    env,
     fs::{create_dir, exists, write},
     io,
     path::Path,
@@ -10,11 +9,11 @@ use std::{
 use anyhow::{Ok, anyhow};
 use nix::unistd::Uid;
 
+use crate::linux::get_home;
+
 /// Setup all the certificates
 pub fn setup_ca() -> Result<(), anyhow::Error> {
-    let certs_folder = home_dir()
-        .ok_or(anyhow!("home not found"))?
-        .join(".noport/certs");
+    let certs_folder = get_home().join(".noport/certs");
     if !exists(&certs_folder)? {
         create_dir(&certs_folder)?;
     }
@@ -33,9 +32,7 @@ pub fn trust_certificate() -> Result<process::ExitStatus, anyhow::Error> {
         return Err(anyhow::Error::msg("THis command should be run as sudo"));
     }
 
-    let ca_cert_path = home_dir()
-        .ok_or(anyhow!("home not found"))?
-        .join(".noport/certs/ca_cert.pem");
+    let ca_cert_path = get_home().join(".noport/certs/ca_cert.pem");
 
     match env::consts::OS {
         "macos" => Command::new("security")
@@ -55,7 +52,7 @@ pub fn trust_certificate() -> Result<process::ExitStatus, anyhow::Error> {
 }
 
 pub fn generate_certificate_for_host(host: &str) -> Result<(), anyhow::Error> {
-    let home_path = home_dir().unwrap().join(".noport/certs");
+    let home_path = get_home().join(".noport/certs");
 
     if !exists(&home_path)? {
         return Err(anyhow!(

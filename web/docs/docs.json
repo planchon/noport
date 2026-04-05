@@ -25,7 +25,14 @@
             "pages": [
               "usage/running",
               "usage/daemon",
-              "usage/tls"
+              "usage/tls",
+              "usage/envs"
+            ]
+          },
+          {
+            "group": "AI coding",
+            "pages": [
+              "ai/agents"
             ]
           },
           {

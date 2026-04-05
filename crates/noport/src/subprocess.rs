@@ -2,13 +2,13 @@ use noport_lib::{
     client::send_command, communication::NoPortCommunication, domain::generate_domain,
     port::find_free_port,
 };
-use paris::{error, info};
 use std::{
     env,
     process::{Command, ExitStatus, Stdio, exit},
     time::Duration,
 };
 use tokio::time::sleep;
+use tracing::{debug, error, info};
 
 use crate::{start::start_background, status::get_status};
 
@@ -75,7 +75,7 @@ pub fn rerun_as_sudo() {
     let mut args = Vec::from_iter(env::args());
     args.splice(0..1, vec![noport]);
 
-    info!("running {:?}", args);
+    debug!("running {:?}", args);
 
     Command::new("sudo")
         .args(args)
