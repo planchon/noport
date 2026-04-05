@@ -71,6 +71,7 @@ before calling `noport` ready, I would like to ship these features (this is the 
 - [x] `https` and `wss` support
 - [ ] automatic sub-domain generation (based on folder, git branch, git worktree)
 - [ ] support famous frameworks (vite, next, nest, ...)
+- [ ] Env management / getting the domain/port
 - [ ] CI / Release process
 - [ ] Usage doc and Architecture doc
 
