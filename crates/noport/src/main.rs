@@ -83,6 +83,12 @@ enum NoPortCommand {
     Trust,
     /// Remove and untrust the CA root certificate
     Nuke,
+    /// Get the full host for a service, usefull when running in subdomain mode
+    Get {
+        /// Set the subdomain
+        #[arg(short, long)]
+        subdomain: Option<String>,
+    },
 }
 
 fn need_sudo(cli: &NoPort) -> bool {
@@ -143,6 +149,9 @@ async fn run() -> Result<()> {
                 } else {
                     return start_background().await;
                 }
+            }
+            NoPortCommand::Get { subdomain } => {
+                bail!("not implemented yet {}", subdomain.unwrap_or_default());
             }
             NoPortCommand::Setup => {
                 cert::setup_ca()?;

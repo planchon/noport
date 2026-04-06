@@ -1,10 +1,10 @@
-pub mod cert;
+pub mod certs;
 pub mod client;
 pub mod communication;
 pub mod domain;
 pub mod hosts;
 pub mod linux;
-mod machine;
+mod machines;
 pub mod port;
 pub mod setup;
 pub mod store;

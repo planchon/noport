@@ -3,13 +3,13 @@ use std::{
     fs::{create_dir, exists, write},
     io,
     path::{Path, PathBuf},
-    process::{self, Command, Output},
+    process::{self, Command},
 };
 
 use anyhow::{Ok, Result, anyhow};
 use nix::unistd::Uid;
 
-use crate::{linux::get_home, machine::Machine};
+use crate::{linux::get_home, machines::Machine};
 
 #[derive(Debug, Clone)]
 struct PrivateKey(PathBuf);
@@ -21,6 +21,7 @@ struct Certificate {
 }
 
 pub trait LocalCertificateAuthority {
+    /// Access to the local machine
     type LocalMachine: Machine;
 
     /// Setup the local certificate authority
