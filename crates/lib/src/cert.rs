@@ -160,7 +160,7 @@ fn create_csr(
     csr_path: &Path,
     domain: &str,
 ) -> Result<process::ExitStatus, io::Error> {
-    Command::new("openssl")
+    command::new("openssl")
         .args(vec![
             "req",
             "-new",
