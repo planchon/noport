@@ -1,0 +1,38 @@
+---
+title: "Subdomains configuration"
+description: "Helpers to interact with `noport` when using multiple instances"
+---
+
+When running `noport` in subdomain (`app.yyy.TLD`) mode, you will have multiple instances of the same app running on differents subdomains (`yyy.TLD`). 
+
+This solves a lot of port related problems, but also requires some configuration.
+
+## Subdomain configuration
+
+`noport` will inject a lot of env. variables in your app, under the `_NOPORT_` (or under framework specific prefix `VITE_`, `NEXT_`...) prefix.
+
+| env. name variable | usage |
+| :--- | ---: |
+| `HOST`| host of `this` app |
+| `PORT`| port of `this` app |
+| `_NOPORT_${APP_NAME}_HOST` | host of `APP` |
+
+## Getting domains
+
+You can also use the cli to get the domain of one app.
+
+<Note>
+NoPort will detect it's running in a monorepo (one `.git` root folder) and will generate the "root" base domain accordingly
+</Note>
+
+```bash
+noport get app 
+# -> https://app.subdomain.localhost
+```
+
+You can set the `subdomain` by hand.
+```bash
+noport get app --subdomain yyy
+# -> http://app.yyy.localhost
+```
+

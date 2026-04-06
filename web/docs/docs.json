@@ -26,7 +26,8 @@
               "usage/running",
               "usage/daemon",
               "usage/tls",
-              "usage/envs"
+              "usage/envs",
+              "usage/groups"
             ]
           },
           {

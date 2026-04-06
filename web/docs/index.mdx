@@ -3,25 +3,41 @@ title: "Why using NoPort ?"
 description: "Change your local development by removing all the friction of ports managements."
 ---
 
-NoPort solves many port related problems, increasong your productivity and your developer experience.
+NoPort solves many port related problems, increasing your productivity and your developer experience.
+`noport` is particullary usefull when : 
+ - you have a big application, running multiple processes (api, frontends...)
+ - run multiple instances of the same app (with AI ✨ assisted coding)
+ - you need TLS termination on your machine
+ - you want a cleaner development experience 💅🏻
 
 ## AI workflows
 
-A true vibe coder do not run only on instance of its app. 
+True vibe coders runs many instances of their app, one per agent at minimum. You review the changes of one agent will the others are working hard. 
 
-He/she run multiple instances of the same app, one per agent / worktree. Reviewing the changes
-from agent when the other are cooking.
+Running multiple instance of the same app is a real pain, as soon as you run your application twice, you will instantly run into `EADDRINUSE` errors.
 
-Running multiple instance of the same app is a real pain, managing one big application is already complexe, imagine the horror of having to map each port to each subsystem of your massive application.
+To solve this problem, you will try to change the port, change the `.env` per instance... but this is a mess and do not scale.
 
-NoPort will detect the git worktree, or the git branch and serve your application on the right subdomain.
+NoPort will detect the `git worktree` or the `git branch` and serve your application under the right subdomain.
 
 If you run 3 instances of your app in 3 differents worktrees, noport will give you 3 differents subdomains.
  - worktree `worktree_1` -> `https://app.worktree_1.localhost`
  - worktree `worktree_2` -> `https://app.worktree_2.localhost`
- - worktree `worktree_3` -> `https://app.worktree_3.localhost`
+ - branch `feature/ai` -> `https://app.ai.localhost`
 
-## Memorizing ports 
+<Warning>
+As `noport` is not yet in `v1` this feature is still at the moment, very experimental
+</Warning>
+
+## `localhost` development
+
+### Host specific data (cookies, local storage) 
+
+Using the `localhost` domain is a bad idea when you run multiple apps : all the cookies, local storage and other data are shared between the instances.
+
+With one dedicated domain per app, you can have a clean development experience.
+
+### Memorizing ports 
 
 In big apps, you can have a lot of APIs and frontends, which means having multiple ports to remembers...
 
@@ -33,12 +49,13 @@ With noport you only have a simple, memoizable, domain.
 
 <Info>Even better, your web browser will remember the domain, enabling auto-completion.</Info>
 
-## `localhost` development
-
-Using the `localhost` domain is a bad idea when you run multiple apps : all the cookies, local storage and other data are shared between the instances.
-
-With one dedicated domain per app, you can have a clean development experience.
-
 ## TLS termination
 
+### Parity with production
+
 Better parity with production: HTTPS on local mirrors real-world HTTPS behavior, headers, cookies (Secure flag), and browser policies.
+
+### HTTP2 support
+Modern frameworks like Vite or Next makes a lot of request through the network, HTTP2 allow making a lot of requests in parallel, which means faster development.
+Most proxy do not support HTTP2, so your app loading time will be slower. 
+

@@ -18,6 +18,12 @@ Start the daemon and customize the proxy behavior.
 | ``--tld`` | Change the TLD | .localhost |
 | ``--https`` | Enable HTTPS proxy and HTTP2 server | false |
 
+<Warning>
+`noport` can asked for sudo access when : `port < 1024` or when using a custom `tld` 
+</Warning>
+
+`https` can be run on any port, but if you want to completly remove the port in the browser, `noport` will ask for sudo access (to run the proxy on the port 443)
+
 ### `stop` the daemon
-Stop the proxy and the daemon.
+Stop the proxy and the daemon. **Does not kill** your application. 
 

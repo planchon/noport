@@ -20,11 +20,14 @@ Everything after the `--` will be passed to the child process. All the arguments
 - `HOST` the host where the app will be run on
 - `PORT` the port your app will use
 
+`noport` also injects specifics env variables, see the doc [Injected envs. variables](/usage/envs)
+
 ## Arguments
 
 You can customize the behavior of `noport` by passing arguments to the `noport` command (before `--`).
 
-| Flags | Description |
-| :----------- | :------------ | 
-| ``--domain`` | The domain used by the proxy |
-| ``--app-port`` | The port of the child process (your app) |
+| Flags | Description | Default |
+| :----------- | :------------ | ---: |
+| ``--domain`` | The domain used by the proxy | Generated | 
+| ``--subdomain`` | The "root" subdomain used (when running multi instances)| empty |
+| ``--app-port`` | The port of the child process (your app) | Generated |
