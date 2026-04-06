@@ -6,6 +6,8 @@ use clap::Parser;
 use clap::Subcommand;
 
 use noport_lib::cert;
+use noport_lib::linux;
+use noport_lib::machines::linux::LinuxMachine;
 use noport_lib::store::Store;
 use tracing::info;
 
@@ -122,6 +124,8 @@ fn need_sudo(cli: &NoPort) -> bool {
 async fn run() -> Result<()> {
     let cli = NoPort::parse();
 
+    let machine = LinuxMachine::new().await?;
+
     if need_sudo(&cli) {
         rerun_as_sudo();
         exit(1);
@@ -141,7 +145,7 @@ async fn run() -> Result<()> {
                 port,
                 https,
             } => {
-                let mut store = Store::new();
+                let mut store = Store::new(&machine);
                 store.set_tld(tld)?;
 
                 if foreground {

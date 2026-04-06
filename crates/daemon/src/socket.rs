@@ -3,6 +3,7 @@ use std::{
     ffi::CString,
     os::unix::fs::chown,
     process::{Command, Stdio},
+    sync::Arc,
 };
 
 use anyhow::{Result, anyhow};
@@ -11,6 +12,7 @@ use noport_lib::{
     client::send_ok,
     communication::{NoPortCommunication, get_socket},
     linux::{add_user_to_group, get_user, upsert_group},
+    machines::Machine,
     store::{Store, StoreEntry},
 };
 use tokio::{
@@ -79,7 +81,10 @@ fn ensure_socket_right(socket_path: &str) -> Result<()> {
 }
 
 /// Create the socket for the client <-> daemon communication
-pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<()> {
+pub async fn create_socket<M: Machine + 'static>(
+    store: &Store<M>,
+    shutdown_tx: Sender<()>,
+) -> Result<()> {
     let socket_path = get_socket();
     let listener = UnixListener::bind(socket_path)?;
 
@@ -107,9 +112,9 @@ pub async fn create_socket(store: &Store, shutdown_tx: Sender<()>) -> Result<()>
     Ok(())
 }
 
-async fn handle_connection(
+async fn handle_connection<M: Machine>(
     mut stream: UnixStream,
-    store: &Store,
+    store: &Store<M>,
     shutdown_tx: Sender<()>,
 ) -> Result<()> {
     let mut buffer = [0; 1024];

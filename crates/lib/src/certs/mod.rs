@@ -5,15 +5,12 @@ use anyhow::Result;
 pub mod openssl;
 
 #[derive(Debug, Clone)]
-struct PrivateKey(PathBuf);
-
-#[derive(Debug, Clone)]
 struct Certificate {
     pub certificate: PathBuf,
     pub secret: PathBuf,
 }
 
-#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug)]
 pub enum CertificateErrors {
     #[error(transparent)]
     IOError(#[from] std::io::Error),
@@ -23,6 +20,8 @@ pub enum CertificateErrors {
     NoCa,
     #[error("openssl command failed")]
     OpensslCommandFailed,
+    #[error("certificate not found")]
+    NotFound,
 }
 
 pub trait LocalCertificateAuthority {
@@ -42,4 +41,6 @@ pub trait LocalCertificateAuthority {
         &self,
         server: String,
     ) -> impl Future<Output = Result<Certificate, CertificateErrors>>;
+
+    fn get_certificate(&self, host: String) -> Result<Certificate, CertificateErrors>;
 }

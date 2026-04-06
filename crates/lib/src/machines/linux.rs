@@ -16,65 +16,72 @@ use crate::{
     machines::{
         BasicMachine, HOST_FILE_BEGIN_MARKER, HOST_FILE_END_MARKER, Machine, MachineErrors,
     },
-    store::Host,
+    store::StoreEntry,
 };
 
-struct LinuxMachine {
+pub struct LinuxMachine {
     basic_machine: BasicMachine,
 }
 
-impl LinuxMachine {}
+impl LinuxMachine {
+    pub async fn new() -> Result<Self, MachineErrors> {
+        let bm = LinuxMachine::basic_machine().await?;
+
+        Ok(Self { basic_machine: bm })
+    }
+}
 
 impl Machine for LinuxMachine {
-    async fn setup_machine(&mut self) -> Result<(), MachineErrors> {
+    async fn basic_machine() -> Result<BasicMachine, MachineErrors> {
         let home = env::home_dir();
 
         if home.is_none() {
             return Err(MachineErrors::NoHome);
         }
 
-        self.basic_machine.home_dir = home.unwrap();
-        self.basic_machine.ca_dir = self.basic_machine.home_dir.join(".noport/ca");
-        self.basic_machine.certs_dir = self.basic_machine.home_dir.join(".noport/certs");
+        let home_dir = home.unwrap();
+        let ca_dir = home_dir.join(".noport/ca");
+        let certs_dir = home_dir.join(".noport/certs");
 
-        if !try_exists(&self.basic_machine.home_dir).await? {
+        if !try_exists(&home_dir).await? {
             info!(
                 "Creating the .noport folder ({})",
-                self.basic_machine.home_dir.to_string_lossy()
+                home_dir.to_string_lossy()
             );
 
-            create_dir(self.basic_machine.home_dir.join(".noport")).await?;
+            create_dir(home_dir.join(".noport")).await?;
         }
 
-        if !try_exists(&self.basic_machine.ca_dir).await? {
-            info!(
-                "Creating the CA folder ({})",
-                self.basic_machine.ca_dir.to_string_lossy()
-            );
-            create_dir(&self.basic_machine.ca_dir).await?;
+        if !try_exists(&ca_dir).await? {
+            info!("Creating the CA folder ({})", ca_dir.to_string_lossy());
+            create_dir(&ca_dir).await?;
         }
 
-        if !try_exists(&self.basic_machine.certs_dir).await? {
+        if !try_exists(&certs_dir).await? {
             info!(
                 "Creating the certs folder ({})",
-                self.basic_machine.certs_dir.to_string_lossy()
+                certs_dir.to_string_lossy()
             );
-            create_dir(&self.basic_machine.certs_dir).await?;
+            create_dir(&certs_dir).await?;
         }
 
-        Ok(())
+        Ok(BasicMachine {
+            home_dir,
+            ca_dir,
+            certs_dir,
+        })
     }
 
     fn get_home(&self) -> PathBuf {
-        self.basic_machine.home_dir
+        self.basic_machine.home_dir.clone()
     }
 
     fn get_ca_folder(&self) -> PathBuf {
-        self.basic_machine.ca_dir
+        self.basic_machine.ca_dir.clone()
     }
 
     fn get_certs_folder(&self) -> PathBuf {
-        self.basic_machine.certs_dir
+        self.basic_machine.certs_dir.clone()
     }
 
     fn user_is_privileged() -> Result<(), MachineErrors> {
@@ -111,7 +118,7 @@ impl Machine for LinuxMachine {
         }
     }
 
-    async fn add_host(&self, host: Host) -> Result<(), MachineErrors> {
+    async fn add_host(&self, entry: StoreEntry) -> Result<(), MachineErrors> {
         Self::user_is_privileged()?;
 
         let linux_host_file = Path::new("/etc/hosts");
@@ -127,10 +134,10 @@ impl Machine for LinuxMachine {
         let end_index = content.iter().position(|s| s == HOST_FILE_END_MARKER);
 
         if begin_index.is_some() && end_index.is_some() {
-            let host = if host.subdomain.is_some() {
-                format!("{}.{}", host.subdomain.unwrap(), host.domain)
+            let host = if entry.subdomain.is_some() {
+                format!("{}.{}", entry.subdomain.unwrap(), entry.domain)
             } else {
-                host.domain
+                entry.domain
             };
 
             let new_host = format!("{}.{} 127.0.0.1", host, "localhost");

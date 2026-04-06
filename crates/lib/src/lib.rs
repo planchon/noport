@@ -4,7 +4,6 @@ pub mod communication;
 pub mod domain;
 pub mod hosts;
 pub mod linux;
-mod machines;
+pub mod machines;
 pub mod port;
-pub mod setup;
 pub mod store;

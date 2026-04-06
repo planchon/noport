@@ -11,11 +11,19 @@ use tokio::{
     process::Command,
 };
 
-struct OpensslCerts<M> {
-    local_machine: M,
+#[derive(Debug)]
+pub struct OpensslCerts<M: Machine + 'static> {
+    local_machine: &'static M,
 }
 
-impl<M> OpensslCerts<M> {
+impl<M> OpensslCerts<M>
+where
+    M: Machine + 'static,
+{
+    pub fn new(local_machine: &'static M) -> Self {
+        Self { local_machine }
+    }
+
     async fn generate_csr(
         domain: &str,
         server_key: &Path,
@@ -196,6 +204,18 @@ where
         Ok(Certificate {
             certificate: cert_file,
             secret,
+        })
+    }
+
+    fn get_certificate(&self, host: String) -> Result<Certificate, CertificateErrors> {
+        let folder = self.local_machine.get_certs_folder().join(&host);
+        if !folder.exists() {
+            return Err(CertificateErrors::NotFound);
+        }
+
+        Ok(Certificate {
+            certificate: folder.join("cert.pem"),
+            secret: folder.join("key.pem"),
         })
     }
 }

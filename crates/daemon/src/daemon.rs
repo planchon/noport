@@ -1,4 +1,4 @@
-use std::{fs::exists, sync::Arc};
+use std::{fmt::Debug, fs::exists, sync::Arc};
 
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
@@ -12,7 +12,12 @@ use rustls::{
 use tokio::{net::TcpListener, sync::mpsc::Sender};
 use tracing::{error, info};
 
-use noport_lib::{cert::generate_certificate_for_host, linux::get_home, store::Store};
+use noport_lib::{
+    certs::{LocalCertificateAuthority, openssl::OpensslCerts},
+    linux::get_home,
+    machines::Machine,
+    store::{NoPortStore, Store},
+};
 use tokio_rustls::TlsAcceptor;
 
 use crate::{server::handle_request, socket::create_socket};
@@ -20,35 +25,40 @@ use crate::{server::handle_request, socket::create_socket};
 type ServerBuilder = hyper::server::conn::http1::Builder;
 
 #[derive(Debug)]
-struct NoPortCertResolver {}
+struct NoPortCertResolver<C: LocalCertificateAuthority> {
+    certs: C,
+}
 
-impl ResolvesServerCert for NoPortCertResolver {
+impl<C> NoPortCertResolver<C>
+where
+    C: LocalCertificateAuthority,
+{
+    pub fn new(certs: C) -> Self {
+        Self { certs }
+    }
+}
+
+impl<C> ResolvesServerCert for NoPortCertResolver<C>
+where
+    C: LocalCertificateAuthority + Send + Sync + Debug,
+{
     fn resolve(
         &self,
         client_hello: rustls::server::ClientHello<'_>,
     ) -> Option<Arc<rustls::sign::CertifiedKey>> {
         match client_hello.server_name() {
             Some(sni) => {
-                let base_cert_folder = get_home().join(".noport/certs");
+                let cert = self.certs.get_certificate(sni.to_string());
 
-                let cert_file = base_cert_folder
-                    .clone()
-                    .join(format!("{}_cert.pem", sni).as_str());
-                let key_file = base_cert_folder
-                    .clone()
-                    .join(format!("{}_key.pem", sni).as_str());
-
-                // we generate on the fly the certificate
-                if !exists(&cert_file).unwrap() {
-                    info!("generating a certificate for the host {}", sni);
-                    if let Err(e) = generate_certificate_for_host(sni) {
-                        error!("Error while generating the certificate {}", e);
-                        return None;
-                    }
+                if cert.is_err() {
+                    error!("could not find the certificate for the host {}", sni);
+                    return None;
                 }
 
-                let cert = CertificateDer::from_pem_file(cert_file).unwrap();
-                let private_key = PrivateKeyDer::from_pem_file(key_file).unwrap();
+                let host_cert = cert.unwrap();
+
+                let cert = CertificateDer::from_pem_file(host_cert.certificate).unwrap();
+                let private_key = PrivateKeyDer::from_pem_file(host_cert.secret).unwrap();
 
                 Some(Arc::new(CertifiedKey {
                     cert: vec![cert],
@@ -61,13 +71,15 @@ impl ResolvesServerCert for NoPortCertResolver {
     }
 }
 
-pub async fn start_deamon(
-    store: Store,
+pub async fn start_deamon<M: Machine + Clone + Debug + Send + Sync>(
+    store: Store<M>,
     addr: String,
     https: bool,
     shutdown_tx: Sender<()>,
 ) -> Result<(), anyhow::Error> {
     let socket_store = store.clone();
+
+    let certs = OpensslCerts::new(store.get_machine());
 
     // run the socket (interaction between CLI and Daemon)
     tokio::spawn(async move {
@@ -85,7 +97,7 @@ pub async fn start_deamon(
         true => Some(Arc::new(
             ServerConfig::builder()
                 .with_no_client_auth()
-                .with_cert_resolver(Arc::new(NoPortCertResolver {})),
+                .with_cert_resolver(Arc::new(NoPortCertResolver { certs })),
         )),
     };
 

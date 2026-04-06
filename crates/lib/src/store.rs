@@ -1,95 +1,46 @@
-use std::fs;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Output;
 use std::sync::Arc;
 
-use anyhow::Result;
+use crate::machines::Machine;
+use anyhow::{Ok, Result};
 use nix::unistd::Uid;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
-use tracing::{error, info};
-
-use crate::hosts::write_host;
-use crate::machine::Machine;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreEntry {
     pub port: i32,
     pub domain: String,
     pub path: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct Host {
-    pub domain: String,
-    pub port: i32,
     pub subdomain: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Store {
+pub struct Store<M: Machine + 'static> {
     inner: Arc<Mutex<Vec<StoreEntry>>>,
     tld: String,
-
-    root_folder: PathBuf,
+    machine: &'static M,
 }
 
-pub trait NoPortStore {
-    type LocalMachine: Machine;
-
-    /// Verify all the right folder (`~/.noport/`) are created
-    /// Create them if needed
-    fn setup() -> impl Future<Output = Result<()>> + Send;
-
-    fn add_host(&self, host: Host) -> impl Future<Output = Result<()>> + Send;
+pub trait NoPortStore<M: Machine + 'static> {
+    fn add_host(&self, entry: StoreEntry) -> impl Future<Output = Result<()>>;
 
     /// Get the host for the given server (complete host without port)
-    fn get_host(&self, server: String) -> impl Future<Output = Result<Host>> + Send;
+    fn get_host(&self, server: String) -> impl Future<Output = Option<StoreEntry>>;
 
     /// Get all the hosts for the given subdomain
     fn get_hosts_for_subdomain(
         &self,
         subdomain: String,
-    ) -> impl Future<Output = Result<Vec<Host>>> + Send;
+    ) -> impl Future<Output = Result<Vec<StoreEntry>>>;
+
+    fn get_machine(&self) -> &'static M;
 }
 
-impl Store {
-    pub fn new() -> Self {
-        let home_folder = Path::new("/tmp/.noport").to_path_buf();
-
-        if !fs::exists(&home_folder).unwrap() {
-            info!(
-                "Creating the .noport folder ({})",
-                home_folder.to_string_lossy()
-            );
-            fs::create_dir(&home_folder).unwrap();
-        }
-
-        Self {
-            inner: Arc::new(Mutex::new(Vec::new())),
-            root_folder: home_folder,
-            tld: "localhost".to_string(),
-        }
-    }
-
-    pub fn root_folder(&self) -> PathBuf {
-        self.root_folder.clone()
-    }
-
-    /// Set the global TLD
-    pub fn set_tld(&mut self, tld: String) -> Result<(), anyhow::Error> {
-        self.tld = tld;
-
-        Ok(())
-    }
-
-    /// Get the global TLD
-    pub fn get_tld(&self) -> String {
-        self.tld.clone()
-    }
-
-    pub async fn add_entry(&self, entry: StoreEntry) {
+impl<M> NoPortStore<M> for Store<M>
+where
+    M: Machine + 'static,
+{
+    async fn add_host(&self, entry: StoreEntry) -> Result<()> {
         let mut inner = self.inner.lock().await;
 
         inner.push(entry.clone());
@@ -97,35 +48,30 @@ impl Store {
         drop(inner);
 
         if Uid::current().is_root() {
-            self.update_hosts().await;
+            self.machine.add_host(entry).await?;
         }
+
+        Ok(())
     }
 
-    async fn update_hosts(&self) {
-        let store_inner = self.inner.lock().await;
-        let hosts = store_inner
-            .iter()
-            .map(|f| format!("127.0.0.1 {}.{}", f.domain.clone(), self.get_tld()))
-            .collect();
-
-        if let Err(e) = write_host(hosts) {
-            error!("error while adding host {}", e);
-        }
-    }
-
-    /// Daemon land
-    /// Resolve the reverse proxy call
-    /// Example: api.localhost -> StoreEntry { port: , domain: "api.localhost", path: "" }
-    pub async fn reverse_proxy(&self, host: String) -> Option<StoreEntry> {
+    async fn get_host(&self, server: String) -> Option<StoreEntry> {
         let store = self.inner.lock().await;
 
-        let tld = format!(".{}", self.get_tld());
-        let sub_domain = host.replace(tld.as_str(), "");
+        let tld = format!(".{}", self.tld);
+        let sub_domain = server.replace(tld.as_str(), "");
 
         if let Some(entry) = store.iter().find(|e| e.domain == sub_domain) {
             return Some(entry.clone());
         }
 
         None
+    }
+
+    async fn get_hosts_for_subdomain(&self, subdomain: String) -> Result<Vec<StoreEntry>> {
+        Ok(vec![])
+    }
+
+    fn get_machine(&self) -> &'static M {
+        self.machine
     }
 }

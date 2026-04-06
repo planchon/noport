@@ -2,7 +2,10 @@ use http_body_util::{BodyExt, Full};
 use hyper::{Response, StatusCode, body::Bytes, upgrade::OnUpgrade};
 
 use hyper_util::rt::TokioIo;
-use noport_lib::store::Store;
+use noport_lib::{
+    machines::Machine,
+    store::{NoPortStore, Store},
+};
 use tokio::net::TcpStream;
 use tracing::{error, info, warn};
 
@@ -53,9 +56,9 @@ fn full<T: Into<Bytes>>(chunk: T) -> BoxBody {
         .boxed()
 }
 
-pub async fn handle_request(
+pub async fn handle_request<M: Machine>(
     mut req: hyper::Request<hyper::body::Incoming>,
-    store: Store,
+    store: Store<M>,
 ) -> Result<Response<BoxBody>, anyhow::Error> {
     let host = extract_host(&req);
 
@@ -69,7 +72,7 @@ pub async fn handle_request(
     }
 
     let host_value = host.unwrap().clone();
-    let store_entry = store.reverse_proxy(host_value.clone()).await;
+    let store_entry = store.get_host(host_value.clone()).await;
 
     if store_entry.is_none() {
         error!(
