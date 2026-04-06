@@ -2,14 +2,43 @@ use std::{
     env,
     fs::{create_dir, exists, write},
     io,
-    path::Path,
-    process::{self, Command},
+    path::{Path, PathBuf},
+    process::{self, Command, Output},
 };
 
-use anyhow::{Ok, anyhow};
+use anyhow::{Ok, Result, anyhow};
 use nix::unistd::Uid;
 
-use crate::linux::get_home;
+use crate::{linux::get_home, machine::Machine};
+
+#[derive(Debug, Clone)]
+struct PrivateKey(PathBuf);
+
+#[derive(Debug, Clone)]
+struct Certificate {
+    pub certificate: PathBuf,
+    pub secret: PathBuf,
+}
+
+pub trait LocalCertificateAuthority {
+    type LocalMachine: Machine;
+
+    /// Setup the local certificate authority
+    /// Check if everything is setup the right way
+    fn setup() -> Result<()>;
+
+    /// Generate a private key using the best cryptographic algorithm available
+    /// by default tries to use the `openssl` binary
+    fn generate_private_key() -> impl Future<Output = Result<PrivateKey>> + Send;
+
+    /// Generate a CA signing key and certificate.
+    /// Saves them into `~/.noport/ca` folder
+    fn generate_ca() -> impl Future<Output = Result<Certificate>> + Send;
+
+    /// Generate a host certificate and private key
+    /// Saves them into `~/.noport/certs/host_name` folder
+    fn generate_host_certificate() -> impl Future<Output = Result<Certificate>> + Send;
+}
 
 /// Setup all the certificates
 pub fn setup_ca() -> Result<(), anyhow::Error> {

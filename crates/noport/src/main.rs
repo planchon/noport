@@ -1,6 +1,7 @@
 use std::process::exit;
 
 use anyhow::Result;
+use anyhow::bail;
 use clap::Parser;
 use clap::Subcommand;
 
@@ -80,6 +81,8 @@ enum NoPortCommand {
     Setup,
     /// Trust globally on your machine the CA root certificate
     Trust,
+    /// Remove and untrust the CA root certificate
+    Nuke,
 }
 
 fn need_sudo(cli: &NoPort) -> bool {
@@ -146,6 +149,9 @@ async fn run() -> Result<()> {
             }
             NoPortCommand::Trust => {
                 cert::trust_certificate()?;
+            }
+            NoPortCommand::Nuke => {
+                bail!("not implemented yet");
             }
         }
     }

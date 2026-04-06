@@ -1,14 +1,17 @@
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Output;
 use std::sync::Arc;
 
+use anyhow::Result;
 use nix::unistd::Uid;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use tracing::{error, info};
 
 use crate::hosts::write_host;
+use crate::machine::Machine;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreEntry {
@@ -18,11 +21,37 @@ pub struct StoreEntry {
 }
 
 #[derive(Debug, Clone)]
+pub struct Host {
+    pub domain: String,
+    pub port: i32,
+    pub subdomain: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Store {
     inner: Arc<Mutex<Vec<StoreEntry>>>,
     tld: String,
 
     root_folder: PathBuf,
+}
+
+pub trait NoPortStore {
+    type LocalMachine: Machine;
+
+    /// Verify all the right folder (`~/.noport/`) are created
+    /// Create them if needed
+    fn setup() -> impl Future<Output = Result<()>> + Send;
+
+    fn add_host(&self, host: Host) -> impl Future<Output = Result<()>> + Send;
+
+    /// Get the host for the given server (complete host without port)
+    fn get_host(&self, server: String) -> impl Future<Output = Result<Host>> + Send;
+
+    /// Get all the hosts for the given subdomain
+    fn get_hosts_for_subdomain(
+        &self,
+        subdomain: String,
+    ) -> impl Future<Output = Result<Vec<Host>>> + Send;
 }
 
 impl Store {
